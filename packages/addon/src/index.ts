@@ -1,0 +1,33 @@
+export {
+  AddonDefinitionError,
+  AddonLifecycleError,
+  createAddon,
+  defineAddon,
+  getAddonMetadata,
+} from "@slicemedia/devkit-core";
+
+export type {
+  AddonAttribute,
+  AddonDefinition,
+  AddonDefinitionInput,
+  AddonDependency,
+  AddonDependencyKind,
+  AddonEnvironment,
+  AddonEnvironmentInput,
+  AddonErrorEvent,
+  AddonInstance,
+  AddonInstanceEventMap,
+  AddonLifecycleHooks,
+  AddonLifecycleMethod,
+  AddonMetadata,
+  AddonOptionMetadata,
+  AddonOptionsChange,
+  AddonPlacement,
+  AddonSetupContext,
+  AddonStatus,
+  AddonStatusChange,
+  AddonValueType,
+  Cleanup,
+  DataWftAttribute,
+  MaybePromise,
+} from "@slicemedia/devkit-core";

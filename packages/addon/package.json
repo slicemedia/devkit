@@ -1,0 +1,61 @@
+{
+  "name": "@slicemedia/devkit-addon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Side-effect-free addon authoring primitives for Slice Media DevKit.",
+  "author": "Slice Media",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicemedia/devkit.git",
+    "directory": "packages/addon"
+  },
+  "homepage": "https://github.com/slicemedia/devkit/tree/main/packages/addon#readme",
+  "bugs": {
+    "url": "https://github.com/slicemedia/devkit/issues"
+  },
+  "keywords": [
+    "slicemedia",
+    "webflow",
+    "addon",
+    "lifecycle",
+    "typescript"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./example": {
+      "types": "./dist/example/index.d.ts",
+      "import": "./dist/example/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "test": "vitest run --environment jsdom src",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@slicemedia/devkit-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

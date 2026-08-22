@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "templates/*"
+
+catalog:
+  "@types/node": ^22.20.1
+  typescript: 6.0.3
+  vite: ^8.2.1
+  vitest: ^4.1.10
+
+minimumReleaseAgeStrict: true

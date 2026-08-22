@@ -1,0 +1,18 @@
+{
+  "entries": [
+    {
+      "name": "project",
+      "input": "src/main.ts",
+      "version": "0.1.0",
+      "description": "Project-owned Webflow browser entry.",
+      "placement": "body-end",
+      "dependencies": [],
+      "attributes": [],
+      "scriptAttributes": {},
+      "api": {
+        "entry": "webflow-project",
+        "capabilities": []
+      }
+    }
+  ]
+}

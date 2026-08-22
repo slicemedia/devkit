@@ -1,0 +1,55 @@
+{
+  "name": "@slicemedia/devkit-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed, dependency-free browser runtime primitives for Slice Media DevKit.",
+  "author": "Slice Media",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicemedia/devkit.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/slicemedia/devkit/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/slicemedia/devkit/issues"
+  },
+  "keywords": [
+    "slicemedia",
+    "webflow",
+    "browser",
+    "lifecycle",
+    "typescript"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25"
+  },
+  "scripts": {
+    "build": "node scripts/prepare-build.mjs && tsc -p tsconfig.build.json",
+    "test": "vitest run --environment jsdom test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

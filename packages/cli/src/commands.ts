@@ -1,0 +1,339 @@
+import { access } from "node:fs/promises";
+import path from "node:path";
+
+import type { ViteDevServer } from "vite";
+
+import { getIntegerOption, getOption, getOptions, hasFlag, parseArgs } from "./args.js";
+import { buildSiteBundle, type BuildSiteBundleOptions } from "./build.js";
+import { startDevServer, type DevServerOptions } from "./dev.js";
+import { discoverAddonEntries } from "./discovery.js";
+import { consoleWriter, writeResult, type OutputWriter } from "./output.js";
+import { forbiddenTermsFromEnvironment, sanitizeTree } from "./sanitize.js";
+import type { CommandResult } from "./types.js";
+import { WebflowClient, webflowOAuthTokenFromEnvironment } from "./webflow/client.js";
+import { scanApiScripts, scanRenderedScripts } from "./webflow/scan.js";
+
+export interface CliDependencies {
+  readonly cwd?: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly writer?: OutputWriter;
+  readonly fetch?: typeof fetch;
+  readonly createClient?: () => WebflowClient;
+  readonly createScriptInspectionClient?: () => WebflowClient;
+  readonly buildBundle?: (options: BuildSiteBundleOptions) => ReturnType<typeof buildSiteBundle>;
+  readonly startDev?: (options: DevServerOptions) => Promise<Pick<ViteDevServer, "resolvedUrls">>;
+}
+
+export async function runCli(
+  argv: readonly string[],
+  dependencies: CliDependencies = {},
+): Promise<number> {
+  const args = parseArgs(argv);
+  const json = hasFlag(args, "json");
+  const writer = dependencies.writer ?? consoleWriter;
+  const cwd = path.resolve(dependencies.cwd ?? process.cwd());
+  const env = dependencies.env ?? process.env;
+
+  try {
+    const result = await dispatch(args.positionals, args, {
+      cwd,
+      env,
+      fetch: dependencies.fetch ?? fetch,
+      createClient:
+        dependencies.createClient ??
+        (() => new WebflowClient({ fetch: dependencies.fetch ?? fetch, token: tokenFromEnv(env) })),
+      createScriptInspectionClient:
+        dependencies.createScriptInspectionClient ??
+        dependencies.createClient ??
+        (() =>
+          new WebflowClient({
+            fetch: dependencies.fetch ?? fetch,
+            token: webflowOAuthTokenFromEnvironment(env),
+          })),
+      buildBundle: dependencies.buildBundle ?? buildSiteBundle,
+      startDev: dependencies.startDev ?? startDevServer,
+    });
+    writeResult(result, json, writer);
+    return result.ok ? 0 : 1;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const result: CommandResult<{ readonly error: string }> = {
+      ok: false,
+      command: args.positionals.join(" ") || "help",
+      summary: message,
+      data: { error: message },
+    };
+    if (json) writeResult(result, true, writer);
+    else writer.error(`[ERROR] ${message}`);
+    return 1;
+  }
+}
+
+interface DispatchContext {
+  readonly cwd: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly fetch: typeof fetch;
+  readonly createClient: () => WebflowClient;
+  readonly createScriptInspectionClient: () => WebflowClient;
+  readonly buildBundle: (options: BuildSiteBundleOptions) => ReturnType<typeof buildSiteBundle>;
+  readonly startDev: (options: DevServerOptions) => Promise<Pick<ViteDevServer, "resolvedUrls">>;
+}
+
+async function dispatch(
+  positionals: readonly string[],
+  args: ReturnType<typeof parseArgs>,
+  context: DispatchContext,
+): Promise<CommandResult> {
+  const command = positionals[0] ?? "help";
+  if (command === "help" || command === "--help") return helpResult();
+  if (command === "doctor") return runDoctor(context.cwd, context.env);
+  if (command === "sanitize") return runSanitize(args, context);
+  if (command === "catalog") return runCatalog(args, context.cwd);
+  if (command === "explain") return runExplain(positionals[1], args, context.cwd);
+  if (command === "build") return runBuild(args, context);
+  if (command === "dev") return runDev(args, context);
+  if (command === "webflow") return runWebflow(positionals.slice(1), args, context);
+  throw new Error(`Unknown command ${JSON.stringify(command)}. Run slicemedia-devkit help.`);
+}
+
+function helpResult(): CommandResult<readonly string[]> {
+  return {
+    ok: true,
+    command: "help",
+    summary: "Slice Media DevKit CLI commands",
+    data: [
+      "doctor",
+      "sanitize [--git-history]",
+      "catalog",
+      "explain <addon>",
+      "build [--entry src/main.ts] [--out-dir dist] [--script-file project.js] [--css-file project.css]",
+      "dev [--host 127.0.0.1] [--port 5173]",
+      "webflow components --site <id>",
+      "webflow scan (--site <id> | --url <url>)",
+    ],
+  };
+}
+
+async function runDoctor(root: string, env: NodeJS.ProcessEnv): Promise<CommandResult> {
+  const checks: Array<{ name: string; status: "pass" | "warn" | "fail"; detail: string }> = [];
+  const supportedNode = isSupportedNodeVersion(process.versions.node);
+  checks.push({
+    name: "node",
+    status: supportedNode ? "pass" : "fail",
+    detail: supportedNode
+      ? `Node ${process.versions.node}`
+      : `Expected Node 22.13+ or Node 24; found ${process.versions.node}`,
+  });
+  checks.push({
+    name: "package",
+    status: (await exists(path.join(root, "package.json"))) ? "pass" : "fail",
+    detail: path.join(root, "package.json"),
+  });
+  checks.push({
+    name: "project-entry",
+    status: (await exists(path.join(root, "src/main.ts"))) ? "pass" : "warn",
+    detail: path.join(root, "src/main.ts"),
+  });
+  checks.push({
+    name: "webflow-auth",
+    status: hasToken(env) ? "pass" : "warn",
+    detail: hasToken(env) ? "Configured" : "Not configured; required only for API commands",
+  });
+  const ok = !checks.some((check) => check.status === "fail");
+  return {
+    ok,
+    command: "doctor",
+    summary: ok ? "Environment is ready." : "Environment checks failed.",
+    data: checks,
+  };
+}
+
+export function isSupportedNodeVersion(version: string): boolean {
+  const [major = 0, minor = 0] = version
+    .split(".")
+    .slice(0, 2)
+    .map((part) => Number.parseInt(part, 10));
+  return (major === 22 && minor >= 13) || major === 24;
+}
+
+async function runSanitize(
+  args: ReturnType<typeof parseArgs>,
+  context: DispatchContext,
+): Promise<CommandResult> {
+  const root = path.resolve(context.cwd, getOption(args, "root") ?? ".");
+  const result = await sanitizeTree({
+    root,
+    forbiddenTerms: forbiddenTermsFromEnvironment(context.env.SLICEMEDIA_FORBIDDEN_TERMS),
+    includeGitHistory: hasFlag(args, "git-history"),
+    additionalIgnores: getOptions(args, "ignore"),
+  });
+  return {
+    ok: result.ok,
+    command: "sanitize",
+    summary: result.ok
+      ? `Sanitization passed across ${result.scannedFiles} files.`
+      : `Sanitization found ${result.findings.length} issue(s).`,
+    data: result.findings,
+  };
+}
+
+async function runCatalog(args: ReturnType<typeof parseArgs>, cwd: string): Promise<CommandResult> {
+  const root = path.resolve(cwd, getOption(args, "root") ?? ".");
+  const entries = await discoverAddonEntries(root);
+  return {
+    ok: true,
+    command: "catalog",
+    summary: `Discovered ${entries.length} addon(s).`,
+    data: entries.map((entry) => ({ ...entry, input: normalizeRelative(root, entry.input) })),
+  };
+}
+
+async function runExplain(
+  name: string | undefined,
+  args: ReturnType<typeof parseArgs>,
+  cwd: string,
+): Promise<CommandResult> {
+  if (name === undefined) throw new Error("Usage: slicemedia-devkit explain <addon>.");
+  const root = path.resolve(cwd, getOption(args, "root") ?? ".");
+  const entry = (await discoverAddonEntries(root)).find((candidate) => candidate.name === name);
+  if (entry === undefined) throw new Error(`Unknown addon ${JSON.stringify(name)}.`);
+  return {
+    ok: true,
+    command: "explain",
+    summary: `${entry.name}: ${entry.description}`,
+    data: { ...entry, input: normalizeRelative(root, entry.input) },
+  };
+}
+
+async function runBuild(
+  args: ReturnType<typeof parseArgs>,
+  context: DispatchContext,
+): Promise<CommandResult> {
+  const root = path.resolve(context.cwd, getOption(args, "root") ?? ".");
+  const entry = getOption(args, "entry");
+  const outDir = getOption(args, "out-dir");
+  const scriptFileName = getOption(args, "script-file");
+  const cssFileName = getOption(args, "css-file");
+  const buildOptions: BuildSiteBundleOptions = {
+    root,
+    ...(entry === undefined ? {} : { entry }),
+    ...(outDir === undefined ? {} : { outDir }),
+    ...(scriptFileName === undefined ? {} : { scriptFileName }),
+    ...(cssFileName === undefined ? {} : { cssFileName }),
+  };
+  const result = await context.buildBundle(buildOptions);
+  const files = [result.scriptPath, ...(result.cssPath === undefined ? [] : [result.cssPath])];
+  return {
+    ok: true,
+    command: "build",
+    summary: `Built ${files.length === 1 ? "one site bundle" : "one site bundle and CSS"}.`,
+    data: result,
+  };
+}
+
+async function runDev(
+  args: ReturnType<typeof parseArgs>,
+  context: DispatchContext,
+): Promise<CommandResult> {
+  const root = path.resolve(context.cwd, getOption(args, "root") ?? ".");
+  const host = getOption(args, "host");
+  const server = await context.startDev({
+    root,
+    ...(host === undefined ? {} : { host }),
+    port: getIntegerOption(args, "port", 5173),
+  });
+  const firstUrl = server.resolvedUrls?.local[0] ?? server.resolvedUrls?.network[0];
+  return {
+    ok: true,
+    command: "dev",
+    summary: `CORS-enabled Vite development server started${firstUrl === undefined ? "." : ` at ${firstUrl}`}`,
+    data: { urls: server.resolvedUrls },
+  };
+}
+
+async function runWebflow(
+  positionals: readonly string[],
+  args: ReturnType<typeof parseArgs>,
+  context: DispatchContext,
+): Promise<CommandResult> {
+  const command = positionals[0];
+  if (command === "components") {
+    const siteId = requireSiteId(args, context.env);
+    const componentId = getOption(args, "component");
+    if (componentId !== undefined) {
+      const properties = await context.createClient().listComponentProperties(siteId, componentId);
+      return {
+        ok: true,
+        command: "webflow components",
+        summary: `Found ${properties.length} component ${properties.length === 1 ? "property" : "properties"}.`,
+        data: properties,
+      };
+    }
+    const components = await context.createClient().listComponents(siteId);
+    return {
+      ok: true,
+      command: "webflow components",
+      summary: `Found ${components.length} component(s).`,
+      data: components,
+    };
+  }
+  if (command === "scan") {
+    const pageUrl = getOption(args, "url");
+    if (pageUrl !== undefined) {
+      const scripts = await scanRenderedScripts(pageUrl, context.fetch);
+      return {
+        ok: true,
+        command: "webflow scan",
+        summary: `Found ${scripts.length} rendered script tag(s).`,
+        data: scripts,
+      };
+    }
+    const siteId = requireSiteId(args, context.env);
+    const scan = await scanApiScripts(context.createScriptInspectionClient(), siteId);
+    return {
+      ok: true,
+      command: "webflow scan",
+      summary: `Found ${scan.registered.length} registered and ${scan.applied.length} applied script(s).`,
+      data: scan,
+    };
+  }
+  throw new Error("Usage: slicemedia-devkit webflow <components|scan>.");
+}
+
+function requireSiteId(args: ReturnType<typeof parseArgs>, env: NodeJS.ProcessEnv): string {
+  const siteId = getOption(args, "site") ?? env.SLICEMEDIA_WEBFLOW_SITE_ID ?? env.WEBFLOW_SITE_ID;
+  if (siteId === undefined || siteId.trim() === "") {
+    throw new Error("Provide --site or set SLICEMEDIA_WEBFLOW_SITE_ID.");
+  }
+  return siteId;
+}
+
+function tokenFromEnv(env: NodeJS.ProcessEnv): string {
+  const token = env.WEBFLOW_OAUTH_ACCESS_TOKEN ?? env.WEBFLOW_OAUTH_TOKEN ?? env.WEBFLOW_API_TOKEN;
+  if (token === undefined || token.trim() === "") {
+    throw new Error("Set WEBFLOW_OAUTH_ACCESS_TOKEN or WEBFLOW_API_TOKEN.");
+  }
+  return token;
+}
+
+function hasToken(env: NodeJS.ProcessEnv): boolean {
+  try {
+    tokenFromEnv(env);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function exists(target: string): Promise<boolean> {
+  try {
+    await access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeRelative(root: string, target: string): string {
+  return path.relative(root, target).split(path.sep).join("/");
+}

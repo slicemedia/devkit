@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "access": "public",
+  "baseBranch": "main",
+  "commit": false,
+  "fixed": [
+    [
+      "@slicemedia/devkit",
+      "@slicemedia/devkit-core",
+      "@slicemedia/devkit-addon",
+      "@slicemedia/devkit-cli",
+      "@slicemedia/create-devkit"
+    ]
+  ],
+  "ignore": ["webflow-project"],
+  "linked": [],
+  "privatePackages": {
+    "tag": false,
+    "version": true
+  },
+  "updateInternalDependencies": "patch"
+}

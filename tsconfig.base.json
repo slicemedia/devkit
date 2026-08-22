@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "@slicemedia/devkit": ["./packages/devkit/src/index.ts"],
+      "@slicemedia/devkit/addon": ["./packages/devkit/src/addon.ts"],
+      "@slicemedia/devkit-addon": ["./packages/addon/src/index.ts"],
+      "@slicemedia/devkit-addon/*": ["./packages/addon/src/*/index.ts"],
+      "@slicemedia/devkit-core": ["./packages/core/src/index.ts"]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "verbatimModuleSyntax": true
+  }
+}

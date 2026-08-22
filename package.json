@@ -1,0 +1,55 @@
+{
+  "name": "@slicemedia/devkit-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-first development infrastructure for teams building with Webflow.",
+  "author": "Slice Media",
+  "homepage": "https://github.com/slicemedia/devkit#readme",
+  "bugs": {
+    "url": "https://github.com/slicemedia/devkit/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25",
+    "pnpm": ">=11.21.0 <12"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "changeset": "changeset",
+    "check": "pnpm version:check && pnpm format:check && pnpm lint && pnpm build && pnpm typecheck && pnpm test",
+    "create:devkit": "pnpm --filter @slicemedia/create-devkit build && node packages/create-devkit/dist/bin.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "release:prepare:check": "pnpm version:check && node scripts/assert-release-preparation-safe.mjs",
+    "release:archive": "pnpm version:check && node scripts/prepare-npm-publication.mjs",
+    "release:publish-next": "node scripts/publish-next.mjs",
+    "release:publish-next:check": "node scripts/assert-npm-publication-artifact.mjs",
+    "release:verify-next": "node scripts/verify-npm-publication.mjs",
+    "sanitize": "pnpm --filter @slicemedia/devkit-cli build && node scripts/run-sanitize.mjs",
+    "test": "vitest run",
+    "test:packed-consumer": "pnpm test:release-candidate",
+    "test:release-candidate": "pnpm version:check && pnpm build && node scripts/test-packed-consumer.mjs",
+    "test:registry-release-candidate": "pnpm version:check && pnpm build && node scripts/test-registry-release-candidate.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "version-packages": "changeset version && pnpm version:sync && pnpm install --lockfile-only && pnpm version:check",
+    "version:check": "node scripts/check-versions.mjs",
+    "version:sync": "node scripts/sync-versions.mjs"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.1",
+    "eslint": "^10.8.1",
+    "jsdom": "^30.0.1",
+    "prettier": "^3.9.6",
+    "semver": "7.8.5",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10",
+    "yaml": "2.9.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "products": {
+    "agentKit": {
+      "packageName": "@slicemedia/agent-kit",
+      "range": "^0.1.0"
+    },
+    "swiperAdapter": {
+      "packageName": "@slicemedia/swiper-adapter",
+      "range": "^0.1.0"
+    },
+    "spacesDeployer": {
+      "packageName": "@slicemedia/spaces-deployer",
+      "range": "^0.1.0"
+    }
+  }
+}

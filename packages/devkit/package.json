@@ -1,0 +1,59 @@
+{
+  "name": "@slicemedia/devkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Convenient browser-runtime and addon-authoring entry point for Slice Media DevKit.",
+  "author": "Slice Media",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicemedia/devkit.git",
+    "directory": "packages/devkit"
+  },
+  "homepage": "https://github.com/slicemedia/devkit#readme",
+  "bugs": {
+    "url": "https://github.com/slicemedia/devkit/issues"
+  },
+  "keywords": [
+    "slicemedia",
+    "webflow",
+    "browser",
+    "addon",
+    "typescript"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./addon": {
+      "types": "./dist/addon.d.ts",
+      "import": "./dist/addon.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@slicemedia/devkit-addon": "workspace:*",
+    "@slicemedia/devkit-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

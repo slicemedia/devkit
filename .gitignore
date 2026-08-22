@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+.env
+.env.*
+!.env.example
+.webflow/
+.private/
+*.local
+*.zip
+*.tgz
+artifacts/
+.npm-release/
+.specstory/
+.vscode/
