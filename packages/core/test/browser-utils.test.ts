@@ -107,4 +107,15 @@ describe("CSS length resolution", () => {
     expect(resolveCssLength("calc(100% - 1rem)")).toBeNull();
     expect(resolveCssLength("2")).toBeNull();
   });
+
+  it("preserves supported decimal spellings", () => {
+    expect(resolveCssLength(" +12.5px ")).toBe(12.5);
+    expect(resolveCssLength(".5rem", { rootFontSize: 16 })).toBe(8);
+    expect(resolveCssLength("1.px")).toBe(1);
+    expect(resolveCssLength("-0.25in")).toBe(-24);
+  });
+
+  it("rejects long malformed numeric input without pathological backtracking", () => {
+    expect(resolveCssLength(`${"1".repeat(100_000)}x`)).toBeNull();
+  });
 });

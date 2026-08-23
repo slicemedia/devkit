@@ -86,7 +86,10 @@ export class WebflowClient {
 
   constructor(options: WebflowClientOptions = {}) {
     this.#token = options.token ?? webflowTokenFromEnvironment();
-    this.#baseUrl = (options.baseUrl ?? "https://api.webflow.com/v2").replace(/\/+$/, "");
+    const configuredBaseUrl = options.baseUrl ?? "https://api.webflow.com/v2";
+    let baseUrlEnd = configuredBaseUrl.length;
+    while (baseUrlEnd > 0 && configuredBaseUrl[baseUrlEnd - 1] === "/") baseUrlEnd -= 1;
+    this.#baseUrl = configuredBaseUrl.slice(0, baseUrlEnd);
     this.#fetch = options.fetch ?? fetch;
     this.#retries = options.retries ?? 4;
     this.#sleep = options.sleep ?? delay;

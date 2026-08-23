@@ -10,7 +10,7 @@ export interface CssLengthContext {
 }
 
 const CSS_LENGTH_PATTERN =
-  /^([+-]?(?:\d+\.?\d*|\.\d+))(px|rem|em|vw|vh|vmin|vmax|%|in|cm|mm|q|pt|pc)?$/i;
+  /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(px|rem|em|vw|vh|vmin|vmax|%|in|cm|mm|q|pt|pc)?$/i;
 
 function finiteOrUndefined(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) ? value : undefined;
