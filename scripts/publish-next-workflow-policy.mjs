@@ -18,7 +18,7 @@ const immediateSourceProof =
 const approvedCommitProof =
   'set -euo pipefail\ntest "$SLICEMEDIA_RELEASE_COMMIT" = "$GITHUB_SHA"\ntest "$SLICEMEDIA_RELEASE_COMMIT" = "$(git rev-parse --verify HEAD^{commit})"\ntest -z "$(git status --porcelain=v1 --untracked-files=all)"\n';
 const npmInstall =
-  "npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null";
+  'set -euo pipefail\nnpm_config_directory="$(mktemp -d)"\nnpm_user_config=""\nnpm_global_config=""\ncleanup_npm_configs() {\n  local status=$?\n  local cleanup_failed=0\n  trap - EXIT\n  set +e\n  if [[ -n "$npm_user_config" ]]; then\n    rm -f -- "$npm_user_config" || cleanup_failed=1\n  fi\n  if [[ -n "$npm_global_config" ]]; then\n    rm -f -- "$npm_global_config" || cleanup_failed=1\n  fi\n  rmdir -- "$npm_config_directory" || cleanup_failed=1\n  if [[ "$cleanup_failed" -ne 0 ]]; then\n    exit 1\n  fi\n  exit "$status"\n}\ntrap cleanup_npm_configs EXIT\numask 077\nnpm_user_config="$(mktemp "$npm_config_directory/user.XXXXXX")"\nnpm_global_config="$(mktemp "$npm_config_directory/global.XXXXXX")"\nif [[ "$npm_user_config" == "$npm_global_config" || "$npm_user_config" -ef "$npm_global_config" ]]; then\n  echo "npm user and global configuration must be distinct files" >&2\n  exit 1\nfi\ntest -f "$npm_user_config" && test ! -s "$npm_user_config"\ntest -f "$npm_global_config" && test ! -s "$npm_global_config"\nnpm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig="$npm_user_config" --globalconfig="$npm_global_config"\n';
 const npmVersionProof = 'test "$(npm --version)" = "11.19.0"';
 const reviewedNpmPathProof =
   'set -euo pipefail\nnpm_global_prefix="$(npm prefix -g)"\nif [[ "$npm_global_prefix" != /* || "$npm_global_prefix" == *:* || "$npm_global_prefix" == *$\'\\n\'* || "$npm_global_prefix" == *$\'\\r\'* ]]; then\n  echo "npm global prefix is not a safe absolute PATH entry" >&2\n  exit 1\nfi\nnpm_global_bin="${npm_global_prefix%/}/bin"\nif [[ ! -d "$npm_global_bin" || ! -x "$npm_global_bin/npm" ]]; then\n  echo "reviewed npm executable was not found in the global npm bin directory" >&2\n  exit 1\nfi\nexport PATH="$npm_global_bin:$PATH"\nif [[ "$(command -v npm)" != "$npm_global_bin/npm" || "$(npm --version)" != "11.19.0" ]]; then\n  echo "reviewed npm 11.19.0 is not first on PATH" >&2\n  exit 1\nfi\nif [[ -z "${GITHUB_PATH:-}" || "$GITHUB_PATH" != /* || "$GITHUB_PATH" == *$\'\\n\'* || "$GITHUB_PATH" == *$\'\\r\'* ]]; then\n  echo "GITHUB_PATH is not a safe absolute command-file path" >&2\n  exit 1\nfi\nprintf \'%s\\n\' "$npm_global_bin" >> "$GITHUB_PATH"\n';
@@ -80,7 +80,11 @@ const expectedWorkflow = {
             install: false,
           },
         },
-        { run: npmInstall },
+        {
+          name: "Install reviewed npm CLI with isolated configuration",
+          shell: "bash",
+          run: npmInstall,
+        },
         {
           name: "Prefer reviewed npm CLI",
           shell: "bash",
@@ -128,7 +132,11 @@ const expectedWorkflow = {
           uses: setupNodeAction,
           with: { "node-version": 24, "check-latest": false },
         },
-        { run: npmInstall },
+        {
+          name: "Install reviewed npm CLI with isolated configuration",
+          shell: "bash",
+          run: npmInstall,
+        },
         { run: npmVersionProof },
         {
           uses: downloadArtifactAction,
@@ -206,12 +214,10 @@ const allowedActions = [
   downloadArtifactAction,
 ];
 const allowedCommands = [
-  npmInstall,
   "pnpm install --frozen-lockfile",
   "pnpm check",
   "pnpm test:registry-release-candidate",
   "pnpm release:archive",
-  npmInstall,
   npmVersionProof,
   "node scripts/assert-npm-publication-artifact.mjs",
   "node scripts/publish-next.mjs",

@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
@@ -15,10 +17,51 @@ import {
 
 const execute = promisify(execFile);
 
-function sanitizedEnvironment() {
-  const environment = { ...process.env };
+export function sanitizedEnvironment(source = process.env) {
+  const environment = { ...source };
   for (const variable of prohibitedPublicationVariables) delete environment[variable];
   return environment;
+}
+
+export function createNpmPublishArguments(candidate, { globalConfig, userConfig }) {
+  if (
+    typeof userConfig !== "string" ||
+    typeof globalConfig !== "string" ||
+    !isAbsolute(userConfig) ||
+    !isAbsolute(globalConfig)
+  ) {
+    throw new Error("npm publication configuration paths must be absolute.");
+  }
+  if (resolve(userConfig) === resolve(globalConfig)) {
+    throw new Error("npm user and global configuration must use distinct files.");
+  }
+  return [
+    "publish",
+    candidate.archive,
+    "--ignore-scripts",
+    "--tag=next",
+    "--access=public",
+    "--provenance",
+    `--registry=${npmRegistry}`,
+    `--userconfig=${userConfig}`,
+    `--globalconfig=${globalConfig}`,
+  ];
+}
+
+export async function withIsolatedNpmConfigs(operation) {
+  if (typeof operation !== "function") {
+    throw new TypeError("An isolated npm configuration operation is required.");
+  }
+  const directory = await mkdtemp(join(tmpdir(), "slicemedia-devkit-npm-config-"));
+  const userConfig = join(directory, "user.npmrc");
+  const globalConfig = join(directory, "global.npmrc");
+  try {
+    await writeFile(userConfig, "", { flag: "wx", mode: 0o600 });
+    await writeFile(globalConfig, "", { flag: "wx", mode: 0o600 });
+    return await operation({ directory, globalConfig, userConfig });
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
 }
 
 async function registryMetadata(name) {
@@ -30,27 +73,18 @@ async function registryMetadata(name) {
   return response.json();
 }
 
-async function publish(candidate) {
-  await execute(
-    "npm",
-    [
-      "publish",
-      candidate.archive,
-      "--ignore-scripts",
-      "--tag=next",
-      "--access=public",
-      "--provenance",
-      `--registry=${npmRegistry}`,
-      "--userconfig=/dev/null",
-      "--globalconfig=/dev/null",
-    ],
-    {
+export async function publishCandidate(
+  candidate,
+  { environment = process.env, executeCommand = execute } = {},
+) {
+  await withIsolatedNpmConfigs(async (configs) => {
+    await executeCommand("npm", createNpmPublishArguments(candidate, configs), {
       cwd: repositoryRoot,
       encoding: "utf8",
-      env: sanitizedEnvironment(),
+      env: sanitizedEnvironment(environment),
       maxBuffer: 16 * 1024 * 1024,
-    },
-  );
+    });
+  });
 }
 
 async function main() {
@@ -73,7 +107,7 @@ async function main() {
     }
 
     await verifySourceCommit(releaseCommit);
-    await publish(candidate);
+    await publishCandidate(candidate);
     console.info(`Published exact ${candidate.name}@${candidate.version} with the next tag.`);
   }
   console.info(

@@ -86,6 +86,20 @@ describe("npm next workflow structural policy", () => {
     );
   });
 
+  it("installs reviewed npm with distinct temporary configs and fail-closed cleanup", () => {
+    expect(workflow.match(/Install reviewed npm CLI with isolated configuration/gu)).toHaveLength(
+      2,
+    );
+    expect(workflow.match(/npm_config_directory="\$\(mktemp -d\)"/gu)).toHaveLength(2);
+    expect(workflow.match(/--userconfig="\$npm_user_config"/gu)).toHaveLength(2);
+    expect(workflow.match(/--globalconfig="\$npm_global_config"/gu)).toHaveLength(2);
+    expect(workflow.match(/trap cleanup_npm_configs EXIT/gu)).toHaveLength(2);
+    expectRejected(
+      workflow.replace('--globalconfig="$npm_global_config"', '--globalconfig="$npm_user_config"'),
+    );
+    expectRejected(workflow.replace('rm -f -- "$npm_global_config"', ":"));
+  });
+
   it("moves only exact commit-bound archives between the jobs", () => {
     expectRejected(workflow.replace("          path: .npm-release", "          path: ."));
     expectRejected(

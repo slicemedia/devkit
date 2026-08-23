@@ -61,7 +61,41 @@ jobs:
           runtime: node@24
           cache: true
           install: false
-      - run: npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null
+      - name: Install reviewed npm CLI with isolated configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_config_directory="$(mktemp -d)"
+          npm_user_config=""
+          npm_global_config=""
+          cleanup_npm_configs() {
+            local status=$?
+            local cleanup_failed=0
+            trap - EXIT
+            set +e
+            if [[ -n "$npm_user_config" ]]; then
+              rm -f -- "$npm_user_config" || cleanup_failed=1
+            fi
+            if [[ -n "$npm_global_config" ]]; then
+              rm -f -- "$npm_global_config" || cleanup_failed=1
+            fi
+            rmdir -- "$npm_config_directory" || cleanup_failed=1
+            if [[ "$cleanup_failed" -ne 0 ]]; then
+              exit 1
+            fi
+            exit "$status"
+          }
+          trap cleanup_npm_configs EXIT
+          umask 077
+          npm_user_config="$(mktemp "$npm_config_directory/user.XXXXXX")"
+          npm_global_config="$(mktemp "$npm_config_directory/global.XXXXXX")"
+          if [[ "$npm_user_config" == "$npm_global_config" || "$npm_user_config" -ef "$npm_global_config" ]]; then
+            echo "npm user and global configuration must be distinct files" >&2
+            exit 1
+          fi
+          test -f "$npm_user_config" && test ! -s "$npm_user_config"
+          test -f "$npm_global_config" && test ! -s "$npm_global_config"
+          npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig="$npm_user_config" --globalconfig="$npm_global_config"
       - name: Prefer reviewed npm CLI
         shell: bash
         run: |
@@ -144,7 +178,41 @@ jobs:
         with:
           node-version: 24
           check-latest: false
-      - run: npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null
+      - name: Install reviewed npm CLI with isolated configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_config_directory="$(mktemp -d)"
+          npm_user_config=""
+          npm_global_config=""
+          cleanup_npm_configs() {
+            local status=$?
+            local cleanup_failed=0
+            trap - EXIT
+            set +e
+            if [[ -n "$npm_user_config" ]]; then
+              rm -f -- "$npm_user_config" || cleanup_failed=1
+            fi
+            if [[ -n "$npm_global_config" ]]; then
+              rm -f -- "$npm_global_config" || cleanup_failed=1
+            fi
+            rmdir -- "$npm_config_directory" || cleanup_failed=1
+            if [[ "$cleanup_failed" -ne 0 ]]; then
+              exit 1
+            fi
+            exit "$status"
+          }
+          trap cleanup_npm_configs EXIT
+          umask 077
+          npm_user_config="$(mktemp "$npm_config_directory/user.XXXXXX")"
+          npm_global_config="$(mktemp "$npm_config_directory/global.XXXXXX")"
+          if [[ "$npm_user_config" == "$npm_global_config" || "$npm_user_config" -ef "$npm_global_config" ]]; then
+            echo "npm user and global configuration must be distinct files" >&2
+            exit 1
+          fi
+          test -f "$npm_user_config" && test ! -s "$npm_user_config"
+          test -f "$npm_global_config" && test ! -s "$npm_global_config"
+          npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig="$npm_user_config" --globalconfig="$npm_global_config"
       - run: test "$(npm --version)" = "11.19.0"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
