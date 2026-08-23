@@ -20,7 +20,7 @@
     "typescript"
   ],
   "type": "module",
-  "private": true,
+  "private": false,
   "license": "MIT",
   "files": [
     "bin",

@@ -22,3 +22,10 @@ only the selected platform files; DevKit does not bundle the Agent Kit source.
 The package also exports the deterministic `scaffoldProject()` API with schema-v2 options and
 receipts for programmatic consumers, including the chosen package manager. DevKit source is MIT
 licensed; generated client projects remain project-owned and receive no automatic license.
+
+## Project notice
+
+This package is independently developed by Slice Media and is not affiliated with, endorsed by, or
+sponsored by Webflow, Inc. Webflow and related marks belong to their respective owners. AI tools
+materially assisted its implementation and documentation; production use still requires human
+review, accessibility and security checks, and project-specific testing.

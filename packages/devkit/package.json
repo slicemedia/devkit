@@ -1,7 +1,7 @@
 {
   "name": "@slicemedia/devkit",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "Convenient browser-runtime and addon-authoring entry point for Slice Media DevKit.",
   "author": "Slice Media",
   "repository": {

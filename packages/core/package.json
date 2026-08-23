@@ -1,7 +1,7 @@
 {
   "name": "@slicemedia/devkit-core",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "Typed, dependency-free browser runtime primitives for Slice Media DevKit.",
   "author": "Slice Media",
   "repository": {

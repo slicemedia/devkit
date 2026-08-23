@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -27,6 +27,20 @@ async function json(relativePath: string): Promise<Record<string, unknown>> {
 }
 
 describe("release version consistency", () => {
+  it("keeps the initial public baseline at 0.1.0 without pending Changesets", async () => {
+    const manifests = await Promise.all(
+      packageDirectories.map((directory) => json(`${directory}/package.json`)),
+    );
+    const pendingChangesets = (await readdir(resolve(workspaceRoot, ".changeset"))).filter(
+      (entry) => entry.endsWith(".md"),
+    );
+    const changelog = await readFile(resolve(workspaceRoot, "CHANGELOG.md"), "utf8");
+
+    expect(manifests.map(({ version }) => version)).toEqual(packageDirectories.map(() => "0.1.0"));
+    expect(pendingChangesets).toEqual([]);
+    expect(changelog).toContain("## 0.1.0 - 2026-08-23");
+  });
+
   it("keeps the fixed package group, runtime, and creator default on one version", async () => {
     const manifests = await Promise.all(
       packageDirectories.map((directory) => json(`${directory}/package.json`)),

@@ -12,16 +12,16 @@ selectors, integrations, or hosting assumptions.
 
 ## Start a project
 
-During private development, clone this repository and use Node 22.13+ or Node 24 with pnpm >=11.21
-and <12:
+To work from source, clone this repository and use Node 22.13+ or Node 24 with pnpm >=11.21 and
+<12:
 
 ```sh
 pnpm install
 pnpm create:devkit
 ```
 
-After publication, launch the same creator through npm, pnpm, or Yarn. With no directory argument,
-the wizard proposes a new `webflow-project` folder; pass `.` to initialize an empty current folder.
+Launch the creator through npm, pnpm, or Yarn. With no directory argument, the wizard proposes a
+new `webflow-project` folder; pass `.` to initialize an empty current folder.
 
 ```sh
 npm create @slicemedia/devkit@next [directory]
@@ -79,17 +79,33 @@ server or perform remote writes and publishing. If the wizard selects agent targ
 adds `@slicemedia/agent-kit`; the generated `agents:generate` script creates only those targets
 through the selected package manager.
 
-DevKit source uses the MIT License. Generated client projects remain project-owned and receive
-no automatic license. All repositories and packages stay private until Slice Media explicitly
-prepares them for release.
+DevKit source uses the MIT License. Generated client projects remain project-owned and receive no
+automatic license.
 
 Maintained releases target Node 22.13+ and Node 24. Core browser output is platform-neutral. The
 CLI and wizard are continuously checked on Linux and Windows; hosting and account-specific shell
 automation remain outside DevKit.
 
+## Versioning and maintenance
+
+DevKit follows Semantic Versioning. Before `1.0.0`, a minor release may contain a documented
+breaking change; patch releases are reserved for compatible fixes. The current `0.x` minor line and
+the active npm `next` candidate receive maintenance. Older minor lines are supported only when the
+maintainers explicitly announce an exception. Maintenance is best-effort and does not include a
+response-time or remediation SLA.
+
+The npm tag `next` identifies the release currently being evaluated. The tag `latest` identifies
+the version recommended for general use. Tags can move between already published versions; they
+are not part of the semantic version itself.
+
+## Independent project notice
+
+Slice Media DevKit is independently developed by Slice Media. It is not affiliated with, endorsed
+by, or sponsored by Webflow, Inc. Webflow and related marks belong to their respective owners.
+
 ## AI disclaimer
 
-AI assisted heavily in building this project. AI-generated code can contain defects, security
-issues, accessibility regressions, and incorrect assumptions; it cannot guarantee bulletproof
-production behavior. Human review, accessibility and security checks, and project-specific testing
-remain required before release.
+AI tools materially assisted the implementation and documentation of this project. AI-generated
+work can contain defects, security issues, accessibility regressions, and incorrect assumptions; it
+cannot guarantee production behavior. Human review, accessibility and security checks, and
+project-specific testing remain required before release.

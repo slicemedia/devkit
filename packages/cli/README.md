@@ -21,3 +21,10 @@ CSS, it also emits `dist/project.css`. Paths can be changed with `--entry`, `--o
 Every command supports `--json`. API-backed inspection accepts `WEBFLOW_OAUTH_ACCESS_TOKEN` or
 `WEBFLOW_API_TOKEN` where the endpoint permits it. Site custom-code scanning specifically requires
 an OAuth access token.
+
+## Project notice
+
+Licensed under MIT. This package is independently developed by Slice Media and is not affiliated
+with, endorsed by, or sponsored by Webflow, Inc. Webflow and related marks belong to their
+respective owners. AI tools materially assisted its implementation and documentation; production
+use still requires human review, accessibility and security checks, and project-specific testing.

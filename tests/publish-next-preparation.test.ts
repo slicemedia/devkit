@@ -9,13 +9,22 @@ const guard = resolve(workspaceRoot, "scripts/assert-npm-publication-artifact.mj
 const packageDirectories = ["devkit", "core", "addon", "cli", "create-devkit"];
 
 describe("npm next publication preparation", () => {
-  it("keeps every package private during incubation", async () => {
+  it("marks only the five release packages public", async () => {
     for (const directory of packageDirectories) {
       const manifest = JSON.parse(
         await readFile(resolve(workspaceRoot, `packages/${directory}/package.json`), "utf8"),
       ) as { private?: boolean };
-      expect(manifest.private).toBe(true);
+      expect(manifest.private).toBe(false);
     }
+
+    const workspace = JSON.parse(
+      await readFile(resolve(workspaceRoot, "package.json"), "utf8"),
+    ) as { private?: boolean };
+    const starter = JSON.parse(
+      await readFile(resolve(workspaceRoot, "templates/starter/package.json"), "utf8"),
+    ) as { private?: boolean };
+    expect(workspace.private).toBe(true);
+    expect(starter.private).toBe(true);
   });
 
   it("fails closed before public/OIDC activation", () => {
@@ -46,6 +55,5 @@ describe("npm next publication preparation", () => {
     expect(result.stderr).toContain("requires an explicitly public repository");
     expect(result.stderr).toContain("SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED=true");
     expect(result.stderr).toContain("requires GitHub Actions OIDC");
-    expect(result.stderr).toContain("must explicitly set private to false");
   });
 });

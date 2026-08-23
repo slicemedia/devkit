@@ -58,8 +58,8 @@ function packedManifest(package_) {
 }
 
 describe("npm publication contract", () => {
-  it("accepts the reviewed source metadata while packages remain private", async () => {
-    const releaseState = await readReleaseState({ requirePublic: false });
+  it("accepts the reviewed public source metadata", async () => {
+    const releaseState = await readReleaseState();
     expect(releaseState.packages).toHaveLength(packageDefinitions.length);
   });
 

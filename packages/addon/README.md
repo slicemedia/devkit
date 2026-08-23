@@ -21,4 +21,9 @@ The example owns only `data-wft-example-state` on elements marked with `data-wft
 the authored value on teardown, and discovers later CMS content when refreshed. It is a reference
 for people and AI agents, not a behavior included by the root import.
 
-Licensed under MIT.
+## Project notice
+
+Licensed under MIT. This package is independently developed by Slice Media and is not affiliated
+with, endorsed by, or sponsored by Webflow, Inc. Webflow and related marks belong to their
+respective owners. AI tools materially assisted its implementation and documentation; production
+use still requires human review, accessibility and security checks, and project-specific testing.

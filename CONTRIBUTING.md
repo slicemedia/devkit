@@ -1,5 +1,8 @@
 # Contributing
 
+Contributors must follow the Slice Media organization-wide Code of Conduct published through the
+shared `.github` community-health repository.
+
 1. Use neutral, synthetic examples only; never copy client history, content, identifiers, assets,
    selectors, URLs, or credentials.
 2. Keep ESM imports side-effect-free and put site composition only in the consumer project.
