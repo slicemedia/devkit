@@ -7,8 +7,8 @@ import { promisify } from "node:util";
 
 import {
   inspectPublicationArtifact,
+  isProhibitedPublicationVariable,
   npmRegistry,
-  prohibitedPublicationVariables,
   repositoryRoot,
   validatePublicationEnvironment,
   validateRegistryMetadata,
@@ -19,7 +19,9 @@ const execute = promisify(execFile);
 
 export function sanitizedEnvironment(source = process.env) {
   const environment = { ...source };
-  for (const variable of prohibitedPublicationVariables) delete environment[variable];
+  for (const variable of Object.keys(environment)) {
+    if (isProhibitedPublicationVariable(variable)) delete environment[variable];
+  }
   return environment;
 }
 
@@ -46,6 +48,17 @@ export function createNpmPublishArguments(candidate, { globalConfig, userConfig 
     `--userconfig=${userConfig}`,
     `--globalconfig=${globalConfig}`,
   ];
+}
+
+export function assertNpmPublishArguments(arguments_, candidate, configs) {
+  const expected = createNpmPublishArguments(candidate, configs);
+  if (
+    !Array.isArray(arguments_) ||
+    arguments_.length !== expected.length ||
+    arguments_.some((argument, index) => argument !== expected[index])
+  ) {
+    throw new Error("npm publication arguments must match the reviewed ordered contract exactly.");
+  }
 }
 
 export async function withIsolatedNpmConfigs(operation) {
@@ -75,10 +88,16 @@ async function registryMetadata(name) {
 
 export async function publishCandidate(
   candidate,
-  { environment = process.env, executeCommand = execute } = {},
+  {
+    createArguments = createNpmPublishArguments,
+    environment = process.env,
+    executeCommand = execute,
+  } = {},
 ) {
   await withIsolatedNpmConfigs(async (configs) => {
-    await executeCommand("npm", createNpmPublishArguments(candidate, configs), {
+    const arguments_ = createArguments(candidate, configs);
+    assertNpmPublishArguments(arguments_, candidate, configs);
+    await executeCommand("npm", arguments_, {
       cwd: repositoryRoot,
       encoding: "utf8",
       env: sanitizedEnvironment(environment),

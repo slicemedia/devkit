@@ -56,23 +56,33 @@ export const packageDefinitions = [
   },
 ];
 
-export const prohibitedPublicationVariables = [
+const exactProhibitedPublicationVariables = new Set([
   "NODE_AUTH_TOKEN",
-  "NPM_CONFIG__AUTH",
-  "NPM_CONFIG__AUTHTOKEN",
-  "NPM_CONFIG_GLOBALCONFIG",
-  "NPM_CONFIG_REGISTRY",
-  "NPM_CONFIG_TOKEN",
-  "NPM_CONFIG_USERCONFIG",
   "NPM_TOKEN",
+  "NPM_ID_TOKEN",
+  "SIGSTORE_ID_TOKEN",
   "YARN_NPM_AUTH_TOKEN",
-  "npm_config__auth",
-  "npm_config__authtoken",
-  "npm_config_globalconfig",
-  "npm_config_registry",
-  "npm_config_token",
-  "npm_config_userconfig",
-];
+]);
+// pnpm injects these inert metadata keys into package scripts. Validation tolerates only these
+// exact names so the reviewed pnpm entry points remain usable; child npm processes still remove
+// both keys with every other npm configuration variable.
+const allowedAmbientPublicationVariables = new Set([
+  "NPM_CONFIG_NODE_GYP",
+  "NPM_CONFIG_USER_AGENT",
+]);
+
+export function isProhibitedPublicationVariable(name) {
+  if (typeof name !== "string") return false;
+  const normalized = name.toUpperCase();
+  return (
+    normalized.startsWith("NPM_CONFIG_") || exactProhibitedPublicationVariables.has(normalized)
+  );
+}
+
+export function isProhibitedPublicationOverride(name) {
+  if (!isProhibitedPublicationVariable(name)) return false;
+  return !allowedAmbientPublicationVariables.has(name.toUpperCase());
+}
 
 const exactSemver =
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
@@ -278,8 +288,8 @@ export async function readReleaseState({ requirePublic = true } = {}) {
 
 export function validateNoPublicationOverrides(environment) {
   const errors = [];
-  for (const variable of prohibitedPublicationVariables) {
-    if (environment[variable]?.trim()) {
+  for (const variable of Object.keys(environment)) {
+    if (isProhibitedPublicationOverride(variable)) {
       errors.push(`${variable} must not override npm publication.`);
     }
   }

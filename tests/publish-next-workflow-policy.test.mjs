@@ -100,6 +100,24 @@ describe("npm next workflow structural policy", () => {
     expectRejected(workflow.replace('rm -f -- "$npm_global_config"', ":"));
   });
 
+  it("rejects every case-insensitive npm config and explicit publication token by name", () => {
+    expect(workflow.match(/check_prohibited_publication_environment\(\)/gu)).toHaveLength(4);
+    expect(workflow.match(/shopt -s nocasematch/gu)).toHaveLength(4);
+    expect(workflow.match(/shopt -u nocasematch/gu)).toHaveLength(4);
+    expect(workflow.match(/done < <\(compgen -e\)/gu)).toHaveLength(4);
+    expect(
+      workflow.match(
+        /NPM_CONFIG_\*\|NODE_AUTH_TOKEN\|NPM_TOKEN\|NPM_ID_TOKEN\|SIGSTORE_ID_TOKEN\|YARN_NPM_AUTH_TOKEN/gu,
+      ),
+    ).toHaveLength(4);
+    expectRejected(
+      workflow.replace("NPM_CONFIG_*|NODE_AUTH_TOKEN", "NPM_CONFIG_REGISTRY|NODE_AUTH_TOKEN"),
+    );
+    expectRejected(workflow.replace("|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN", "|SIGSTORE_ID_TOKEN"));
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL|");
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_TOKEN|");
+  });
+
   it("moves only exact commit-bound archives between the jobs", () => {
     expectRejected(workflow.replace("          path: .npm-release", "          path: ."));
     expectRejected(

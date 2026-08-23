@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateArchiveHashes,
+  isProhibitedPublicationOverride,
+  isProhibitedPublicationVariable,
   packageDefinitions,
   readReleaseState,
   validateNoPublicationOverrides,
@@ -72,12 +74,51 @@ describe("npm publication contract", () => {
     expect(validateReceiptShape({ ...receipt, unexpected: true }, state, commit)).not.toEqual([]);
   });
 
-  it("rejects credential and registry overrides in either common casing", () => {
-    expect(validateNoPublicationOverrides({ NODE_AUTH_TOKEN: "synthetic" })).not.toEqual([]);
-    expect(
-      validateNoPublicationOverrides({ npm_config_registry: "https://example.test" }),
-    ).not.toEqual([]);
-    expect(validateNoPublicationOverrides({})).toEqual([]);
+  it.each([
+    "Npm_Config__AuthToken",
+    "Npm_Config_//registry.npmjs.org/:_authToken",
+    "Npm_Config_Ignore_Scripts",
+    "Npm_Config_Provenance",
+    "Npm_Config_Tag",
+    "Npm_Config_Registry",
+    "Npm_Config_UserConfig",
+    "Node_Auth_Token",
+    "Npm_Token",
+    "Npm_Id_Token",
+    "Sigstore_Id_Token",
+    "Yarn_Npm_Auth_Token",
+  ])("rejects the publication environment variable %s by name", (variable) => {
+    expect(isProhibitedPublicationVariable(variable)).toBe(true);
+    expect(validateNoPublicationOverrides({ [variable]: "synthetic" })).toEqual([
+      `${variable} must not override npm publication.`,
+    ]);
+    expect(validateNoPublicationOverrides({ [variable]: "" })).toEqual([
+      `${variable} must not override npm publication.`,
+    ]);
+  });
+
+  it("allows ordinary and GitHub OIDC request environment variables", () => {
+    const environment = {
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: "synthetic-oidc-request-token",
+      ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.test/oidc",
+      GITHUB_SHA: commit,
+      PATH: "/usr/bin",
+    };
+    expect(Object.keys(environment).every((name) => !isProhibitedPublicationVariable(name))).toBe(
+      true,
+    );
+    expect(validateNoPublicationOverrides(environment)).toEqual([]);
+  });
+
+  it.each([
+    ["Npm_Config_User_Agent", "pnpm/11.21.0 npm/? node/v24"],
+    ["Npm_Config_Node_Gyp", "/example/node-gyp.js"],
+  ])("allows only the inert package-manager metadata key %s during validation", (name, value) => {
+    expect(isProhibitedPublicationVariable(name)).toBe(true);
+    expect(isProhibitedPublicationOverride(name)).toBe(false);
+    expect(validateNoPublicationOverrides({ [name]: value })).toEqual([]);
+    expect(isProhibitedPublicationOverride(`${name}_Extra`)).toBe(true);
+    expect(validateNoPublicationOverrides({ [`${name}_Extra`]: value })).not.toEqual([]);
   });
 
   it("requires the explicit public protected OIDC environment", () => {
