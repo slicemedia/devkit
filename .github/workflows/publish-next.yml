@@ -36,12 +36,20 @@ jobs:
             echo "release_commit must be a full lowercase commit SHA" >&2
             exit 1
           fi
-          for variable in NODE_AUTH_TOKEN NPM_TOKEN NPM_CONFIG_TOKEN NPM_CONFIG__AUTH NPM_CONFIG__AUTHTOKEN NPM_CONFIG_REGISTRY NPM_CONFIG_USERCONFIG NPM_CONFIG_GLOBALCONFIG YARN_NPM_AUTH_TOKEN npm_config_token npm_config__auth npm_config__authtoken npm_config_registry npm_config_userconfig npm_config_globalconfig; do
-            if [[ -n "${!variable:-}" ]]; then
-              echo "$variable must not be present in the release workflow" >&2
-              exit 1
-            fi
-          done
+          check_prohibited_publication_environment() {
+            local variable
+            shopt -s nocasematch
+            while IFS= read -r variable; do
+              case "$variable" in
+                NPM_CONFIG_*|NODE_AUTH_TOKEN|NPM_TOKEN|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN|YARN_NPM_AUTH_TOKEN)
+                  printf 'Prohibited publication environment variable is present: %q\n' "$variable" >&2
+                  return 1
+                  ;;
+              esac
+            done < <(compgen -e)
+            shopt -u nocasematch
+          }
+          check_prohibited_publication_environment
           head_commit="$(git rev-parse --verify HEAD^{commit})"
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
           test "$SLICEMEDIA_RELEASE_COMMIT" = "$GITHUB_SHA"
@@ -61,7 +69,55 @@ jobs:
           runtime: node@24
           cache: true
           install: false
-      - run: npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null
+      - name: Install reviewed npm CLI with isolated configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_prohibited_publication_environment() {
+            local variable
+            shopt -s nocasematch
+            while IFS= read -r variable; do
+              case "$variable" in
+                NPM_CONFIG_*|NODE_AUTH_TOKEN|NPM_TOKEN|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN|YARN_NPM_AUTH_TOKEN)
+                  printf 'Prohibited publication environment variable is present: %q\n' "$variable" >&2
+                  return 1
+                  ;;
+              esac
+            done < <(compgen -e)
+            shopt -u nocasematch
+          }
+          check_prohibited_publication_environment
+          npm_config_directory="$(mktemp -d)"
+          npm_user_config=""
+          npm_global_config=""
+          cleanup_npm_configs() {
+            local status=$?
+            local cleanup_failed=0
+            trap - EXIT
+            set +e
+            if [[ -n "$npm_user_config" ]]; then
+              rm -f -- "$npm_user_config" || cleanup_failed=1
+            fi
+            if [[ -n "$npm_global_config" ]]; then
+              rm -f -- "$npm_global_config" || cleanup_failed=1
+            fi
+            rmdir -- "$npm_config_directory" || cleanup_failed=1
+            if [[ "$cleanup_failed" -ne 0 ]]; then
+              exit 1
+            fi
+            exit "$status"
+          }
+          trap cleanup_npm_configs EXIT
+          umask 077
+          npm_user_config="$(mktemp "$npm_config_directory/user.XXXXXX")"
+          npm_global_config="$(mktemp "$npm_config_directory/global.XXXXXX")"
+          if [[ "$npm_user_config" == "$npm_global_config" || "$npm_user_config" -ef "$npm_global_config" ]]; then
+            echo "npm user and global configuration must be distinct files" >&2
+            exit 1
+          fi
+          test -f "$npm_user_config" && test ! -s "$npm_user_config"
+          test -f "$npm_global_config" && test ! -s "$npm_global_config"
+          npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig="$npm_user_config" --globalconfig="$npm_global_config"
       - name: Prefer reviewed npm CLI
         shell: bash
         run: |
@@ -128,12 +184,20 @@ jobs:
             echo "release_commit must be a full lowercase commit SHA" >&2
             exit 1
           fi
-          for variable in NODE_AUTH_TOKEN NPM_TOKEN NPM_CONFIG_TOKEN NPM_CONFIG__AUTH NPM_CONFIG__AUTHTOKEN NPM_CONFIG_REGISTRY NPM_CONFIG_USERCONFIG NPM_CONFIG_GLOBALCONFIG YARN_NPM_AUTH_TOKEN npm_config_token npm_config__auth npm_config__authtoken npm_config_registry npm_config_userconfig npm_config_globalconfig; do
-            if [[ -n "${!variable:-}" ]]; then
-              echo "$variable must not be present in the release workflow" >&2
-              exit 1
-            fi
-          done
+          check_prohibited_publication_environment() {
+            local variable
+            shopt -s nocasematch
+            while IFS= read -r variable; do
+              case "$variable" in
+                NPM_CONFIG_*|NODE_AUTH_TOKEN|NPM_TOKEN|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN|YARN_NPM_AUTH_TOKEN)
+                  printf 'Prohibited publication environment variable is present: %q\n' "$variable" >&2
+                  return 1
+                  ;;
+              esac
+            done < <(compgen -e)
+            shopt -u nocasematch
+          }
+          check_prohibited_publication_environment
           head_commit="$(git rev-parse --verify HEAD^{commit})"
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
           test "$SLICEMEDIA_RELEASE_COMMIT" = "$GITHUB_SHA"
@@ -144,7 +208,55 @@ jobs:
         with:
           node-version: 24
           check-latest: false
-      - run: npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null
+      - name: Install reviewed npm CLI with isolated configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_prohibited_publication_environment() {
+            local variable
+            shopt -s nocasematch
+            while IFS= read -r variable; do
+              case "$variable" in
+                NPM_CONFIG_*|NODE_AUTH_TOKEN|NPM_TOKEN|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN|YARN_NPM_AUTH_TOKEN)
+                  printf 'Prohibited publication environment variable is present: %q\n' "$variable" >&2
+                  return 1
+                  ;;
+              esac
+            done < <(compgen -e)
+            shopt -u nocasematch
+          }
+          check_prohibited_publication_environment
+          npm_config_directory="$(mktemp -d)"
+          npm_user_config=""
+          npm_global_config=""
+          cleanup_npm_configs() {
+            local status=$?
+            local cleanup_failed=0
+            trap - EXIT
+            set +e
+            if [[ -n "$npm_user_config" ]]; then
+              rm -f -- "$npm_user_config" || cleanup_failed=1
+            fi
+            if [[ -n "$npm_global_config" ]]; then
+              rm -f -- "$npm_global_config" || cleanup_failed=1
+            fi
+            rmdir -- "$npm_config_directory" || cleanup_failed=1
+            if [[ "$cleanup_failed" -ne 0 ]]; then
+              exit 1
+            fi
+            exit "$status"
+          }
+          trap cleanup_npm_configs EXIT
+          umask 077
+          npm_user_config="$(mktemp "$npm_config_directory/user.XXXXXX")"
+          npm_global_config="$(mktemp "$npm_config_directory/global.XXXXXX")"
+          if [[ "$npm_user_config" == "$npm_global_config" || "$npm_user_config" -ef "$npm_global_config" ]]; then
+            echo "npm user and global configuration must be distinct files" >&2
+            exit 1
+          fi
+          test -f "$npm_user_config" && test ! -s "$npm_user_config"
+          test -f "$npm_global_config" && test ! -s "$npm_global_config"
+          npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig="$npm_user_config" --globalconfig="$npm_global_config"
       - run: test "$(npm --version)" = "11.19.0"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

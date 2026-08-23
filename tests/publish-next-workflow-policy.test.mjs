@@ -86,6 +86,38 @@ describe("npm next workflow structural policy", () => {
     );
   });
 
+  it("installs reviewed npm with distinct temporary configs and fail-closed cleanup", () => {
+    expect(workflow.match(/Install reviewed npm CLI with isolated configuration/gu)).toHaveLength(
+      2,
+    );
+    expect(workflow.match(/npm_config_directory="\$\(mktemp -d\)"/gu)).toHaveLength(2);
+    expect(workflow.match(/--userconfig="\$npm_user_config"/gu)).toHaveLength(2);
+    expect(workflow.match(/--globalconfig="\$npm_global_config"/gu)).toHaveLength(2);
+    expect(workflow.match(/trap cleanup_npm_configs EXIT/gu)).toHaveLength(2);
+    expectRejected(
+      workflow.replace('--globalconfig="$npm_global_config"', '--globalconfig="$npm_user_config"'),
+    );
+    expectRejected(workflow.replace('rm -f -- "$npm_global_config"', ":"));
+  });
+
+  it("rejects every case-insensitive npm config and explicit publication token by name", () => {
+    expect(workflow.match(/check_prohibited_publication_environment\(\)/gu)).toHaveLength(4);
+    expect(workflow.match(/shopt -s nocasematch/gu)).toHaveLength(4);
+    expect(workflow.match(/shopt -u nocasematch/gu)).toHaveLength(4);
+    expect(workflow.match(/done < <\(compgen -e\)/gu)).toHaveLength(4);
+    expect(
+      workflow.match(
+        /NPM_CONFIG_\*\|NODE_AUTH_TOKEN\|NPM_TOKEN\|NPM_ID_TOKEN\|SIGSTORE_ID_TOKEN\|YARN_NPM_AUTH_TOKEN/gu,
+      ),
+    ).toHaveLength(4);
+    expectRejected(
+      workflow.replace("NPM_CONFIG_*|NODE_AUTH_TOKEN", "NPM_CONFIG_REGISTRY|NODE_AUTH_TOKEN"),
+    );
+    expectRejected(workflow.replace("|NPM_ID_TOKEN|SIGSTORE_ID_TOKEN", "|SIGSTORE_ID_TOKEN"));
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL|");
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_TOKEN|");
+  });
+
   it("moves only exact commit-bound archives between the jobs", () => {
     expectRejected(workflow.replace("          path: .npm-release", "          path: ."));
     expectRejected(
