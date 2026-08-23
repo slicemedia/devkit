@@ -73,6 +73,19 @@ describe("npm next workflow structural policy", () => {
     );
   });
 
+  it("fails closed unless the reviewed global npm is first on PATH for preparation", () => {
+    expect(workflow.match(/npm_global_prefix="\$\(npm prefix -g\)"/gu)).toHaveLength(1);
+    expectRejected(workflow.replace('! -x "$npm_global_bin/npm"', '! -e "$npm_global_bin/npm"'));
+    expectRejected(workflow.replace('export PATH="$npm_global_bin:$PATH"', 'export PATH="$PATH"'));
+    expectRejected(workflow.replace('"$(npm --version)" != "11.19.0"', '"11.19.0" != "11.19.0"'));
+    expectRejected(
+      workflow.replace(
+        'printf \'%s\\n\' "$npm_global_bin" >> "$GITHUB_PATH"',
+        'printf \'%s\\n\' "$PATH" >> "$GITHUB_PATH"',
+      ),
+    );
+  });
+
   it("moves only exact commit-bound archives between the jobs", () => {
     expectRejected(workflow.replace("          path: .npm-release", "          path: ."));
     expectRejected(
