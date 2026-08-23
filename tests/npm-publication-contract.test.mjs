@@ -12,7 +12,7 @@ import {
   validateReceiptShape,
   validateRegistryMetadata,
 } from "../scripts/npm-publication-contract.mjs";
-import { validatePackResult } from "../scripts/prepare-npm-publication.mjs";
+import { parsePackResult, validatePackResult } from "../scripts/prepare-npm-publication.mjs";
 
 const commit = "1".repeat(40);
 const version = "0.2.0";
@@ -219,5 +219,51 @@ describe("npm publication contract", () => {
         candidate,
       ),
     ).not.toEqual([]);
+  });
+
+  it("accepts pnpm pack JSON as one object or a one-element array", () => {
+    const result = {
+      filename: "/tmp/devkit-core.tgz",
+      files: [{ path: "package.json" }],
+      name: "@slicemedia/devkit-core",
+      version,
+    };
+
+    expect(parsePackResult(JSON.stringify(result))).toEqual(result);
+    expect(parsePackResult(JSON.stringify([result]))).toEqual(result);
+  });
+
+  it.each([
+    ["name", { name: "@slicemedia/devkit-cor" }],
+    ["version", { version: "0.2.1" }],
+    ["filename", { filename: "/tmp/other.tgz" }],
+  ])("rejects a mutated pnpm pack %s", (_label, mutation) => {
+    const expected = state.packages[0];
+    const result = parsePackResult(
+      JSON.stringify({
+        filename: "/tmp/devkit-core.tgz",
+        name: expected.name,
+        version,
+        ...mutation,
+      }),
+    );
+
+    expect(validatePackResult(result, expected, "/tmp/devkit-core.tgz")).not.toEqual([]);
+  });
+
+  it.each([
+    ["an empty array", "[]"],
+    ["multiple results", JSON.stringify([{ name: "first" }, { name: "second" }])],
+    ["a nested array", JSON.stringify([[{ name: "nested" }]])],
+    ["null", "null"],
+    ["a primitive", JSON.stringify("result")],
+  ])("rejects pnpm pack JSON containing %s", (_label, output) => {
+    expect(() => parsePackResult(output)).toThrow(
+      "pnpm pack --json must return exactly one package result.",
+    );
+  });
+
+  it("rejects malformed pnpm pack JSON", () => {
+    expect(() => parsePackResult("{not-json")).toThrow("pnpm pack --json returned invalid JSON.");
   });
 });
