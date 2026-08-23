@@ -44,6 +44,26 @@ export function validatePackResult(result, expected, expectedArchive) {
   return errors;
 }
 
+export function parsePackResult(output) {
+  let parsed;
+  try {
+    parsed = JSON.parse(output);
+  } catch {
+    throw new Error("pnpm pack --json returned invalid JSON.");
+  }
+
+  const results = Array.isArray(parsed) ? parsed : [parsed];
+  if (
+    results.length !== 1 ||
+    results[0] === null ||
+    typeof results[0] !== "object" ||
+    Array.isArray(results[0])
+  ) {
+    throw new Error("pnpm pack --json must return exactly one package result.");
+  }
+  return results[0];
+}
+
 async function main() {
   const overrideErrors = validateNoPublicationOverrides(process.env);
   if (overrideErrors.length > 0) throw new Error(overrideErrors.join("\n"));
@@ -70,11 +90,7 @@ async function main() {
         ["pack", "--out", temporaryArchive, "--json"],
         resolve(repositoryRoot, package_.directory),
       );
-      const parsed = JSON.parse(stdout);
-      if (!Array.isArray(parsed) || parsed.length !== 1) {
-        throw new Error(`${package_.name} must produce exactly one npm archive.`);
-      }
-      const result = parsed[0];
+      const result = parsePackResult(stdout);
       const metadata = await calculateArchiveMetadata(temporaryArchive);
       const errors = validatePackResult(result, package_, temporaryArchive);
       if (errors.length > 0) throw new Error(errors.join("\n"));
