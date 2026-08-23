@@ -20,6 +20,8 @@ const approvedCommitProof =
 const npmInstall =
   "npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/ --userconfig=/dev/null --globalconfig=/dev/null";
 const npmVersionProof = 'test "$(npm --version)" = "11.19.0"';
+const reviewedNpmPathProof =
+  'set -euo pipefail\nnpm_global_prefix="$(npm prefix -g)"\nif [[ "$npm_global_prefix" != /* || "$npm_global_prefix" == *:* || "$npm_global_prefix" == *$\'\\n\'* || "$npm_global_prefix" == *$\'\\r\'* ]]; then\n  echo "npm global prefix is not a safe absolute PATH entry" >&2\n  exit 1\nfi\nnpm_global_bin="${npm_global_prefix%/}/bin"\nif [[ ! -d "$npm_global_bin" || ! -x "$npm_global_bin/npm" ]]; then\n  echo "reviewed npm executable was not found in the global npm bin directory" >&2\n  exit 1\nfi\nexport PATH="$npm_global_bin:$PATH"\nif [[ "$(command -v npm)" != "$npm_global_bin/npm" || "$(npm --version)" != "11.19.0" ]]; then\n  echo "reviewed npm 11.19.0 is not first on PATH" >&2\n  exit 1\nfi\nif [[ -z "${GITHUB_PATH:-}" || "$GITHUB_PATH" != /* || "$GITHUB_PATH" == *$\'\\n\'* || "$GITHUB_PATH" == *$\'\\r\'* ]]; then\n  echo "GITHUB_PATH is not a safe absolute command-file path" >&2\n  exit 1\nfi\nprintf \'%s\\n\' "$npm_global_bin" >> "$GITHUB_PATH"\n';
 const artifactName = "devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}";
 const releaseCommitEnvironment = {
   SLICEMEDIA_RELEASE_COMMIT: "${{ inputs.release_commit }}",
@@ -79,7 +81,11 @@ const expectedWorkflow = {
           },
         },
         { run: npmInstall },
-        { run: npmVersionProof },
+        {
+          name: "Prefer reviewed npm CLI",
+          shell: "bash",
+          run: reviewedNpmPathProof,
+        },
         { run: "pnpm install --frozen-lockfile" },
         { run: "pnpm check" },
         { run: "pnpm test:registry-release-candidate" },
@@ -200,7 +206,6 @@ const allowedActions = [
 ];
 const allowedCommands = [
   npmInstall,
-  npmVersionProof,
   "pnpm install --frozen-lockfile",
   "pnpm check",
   "pnpm test:registry-release-candidate",
