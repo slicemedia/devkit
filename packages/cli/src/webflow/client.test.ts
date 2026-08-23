@@ -103,6 +103,31 @@ describe("WebflowClient", () => {
     expect(String(fetcher.mock.calls[0]?.[0])).not.toContain("offset=");
   });
 
+  it("removes every trailing slash from a configured base URL", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ id: "site-one" }));
+    const client = new WebflowClient({
+      token: "test-token",
+      fetch: fetcher as typeof fetch,
+      baseUrl: "https://api.example.test/v2///",
+    });
+
+    await expect(client.getSite("site-one")).resolves.toEqual({ id: "site-one" });
+    expect(fetcher.mock.calls[0]?.[0]).toBe("https://api.example.test/v2/sites/site-one");
+  });
+
+  it("preserves long non-trailing slash runs without pathological backtracking", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ id: "site-one" }));
+    const baseUrl = `https://api.example.test/${"/".repeat(100_000)}x`;
+    const client = new WebflowClient({
+      token: "test-token",
+      fetch: fetcher as typeof fetch,
+      baseUrl,
+    });
+
+    await expect(client.getSite("site-one")).resolves.toEqual({ id: "site-one" });
+    expect(fetcher.mock.calls[0]?.[0]).toBe(`${baseUrl}/sites/site-one`);
+  });
+
   it("backs off and retries rate limits", async () => {
     const fetcher = vi
       .fn()
