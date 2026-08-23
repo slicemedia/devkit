@@ -3,6 +3,17 @@
 Local development, project builds, sanitization, addon metadata, and read-only Webflow inspection.
 The CLI contains no Webflow write or publish commands.
 
+Run the `0.1.0` release candidate directly through the npm `next` tag:
+
+```sh
+npm exec --package=@slicemedia/devkit-cli@next -- slicemedia-devkit help
+pnpm dlx @slicemedia/devkit-cli@next help
+yarn dlx @slicemedia/devkit-cli@next help
+```
+
+For repeated use, install it in a project and call `slicemedia-devkit` from that project's scripts,
+or install it globally with `npm install --global @slicemedia/devkit-cli@next`.
+
 ```sh
 slicemedia-devkit dev
 slicemedia-devkit build
@@ -21,6 +32,12 @@ CSS, it also emits `dist/project.css`. Paths can be changed with `--entry`, `--o
 Every command supports `--json`. API-backed inspection accepts `WEBFLOW_OAUTH_ACCESS_TOKEN` or
 `WEBFLOW_API_TOKEN` where the endpoint permits it. Site custom-code scanning specifically requires
 an OAuth access token.
+
+## Support and security
+
+See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for
+help and maintenance expectations. Report vulnerabilities through the
+[DevKit security policy](../../SECURITY.md), not a public issue.
 
 ## Project notice
 
