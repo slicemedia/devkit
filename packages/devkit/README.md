@@ -4,8 +4,12 @@ The optional convenience package for Slice Media DevKit. Its root re-exports the
 browser runtime from `@slicemedia/devkit-core`; the `@slicemedia/devkit/addon` subpath exposes addon
 authoring primitives.
 
+Install the `0.1.0` release candidate through the npm `next` tag:
+
 ```sh
 npm install @slicemedia/devkit@next
+pnpm add @slicemedia/devkit@next
+yarn add @slicemedia/devkit@next
 ```
 
 ```ts
@@ -16,6 +20,12 @@ import { defineAddon } from "@slicemedia/devkit/addon";
 Importing either entry does not install a global runtime, initialize behavior, or load the optional
 addon example. Applications that want the smallest dependency surface may continue to install and
 import `@slicemedia/devkit-core` or `@slicemedia/devkit-addon` directly.
+
+## Support and security
+
+See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for
+help and maintenance expectations. Report vulnerabilities through the
+[DevKit security policy](../../SECURITY.md), not a public issue.
 
 ## Project notice
 

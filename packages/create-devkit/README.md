@@ -1,11 +1,13 @@
 # `@slicemedia/create-devkit`
 
 Starts an interactive wizard for a new neutral TypeScript Webflow project. The optional directory
-argument follows the convention used by established project creators:
+argument follows the convention used by established project creators. Run the `0.1.0` release
+candidate through the npm `next` tag with any supported package manager:
 
 ```sh
-create-slicemedia-devkit [directory]
-create-slicemedia-devkit .
+npm create @slicemedia/devkit@next my-webflow-project
+pnpm dlx @slicemedia/create-devkit@next my-webflow-project
+yarn dlx @slicemedia/create-devkit@next my-webflow-project
 ```
 
 Without a directory argument, the wizard proposes `webflow-project`. A literal `.` selects the
@@ -22,6 +24,12 @@ only the selected platform files; DevKit does not bundle the Agent Kit source.
 The package also exports the deterministic `scaffoldProject()` API with schema-v2 options and
 receipts for programmatic consumers, including the chosen package manager. DevKit source is MIT
 licensed; generated client projects remain project-owned and receive no automatic license.
+
+## Support and security
+
+See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for
+help and maintenance expectations. Report vulnerabilities through the
+[DevKit security policy](../../SECURITY.md), not a public issue.
 
 ## Project notice
 

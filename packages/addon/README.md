@@ -4,6 +4,14 @@ Side-effect-free primitives for authoring a Webflow enhancement with the shared 
 The root package re-exports the addon contract from `@slicemedia/devkit-core`; importing it never
 queries the DOM or starts an addon.
 
+Install the `0.1.0` release candidate through the npm `next` tag:
+
+```sh
+npm install @slicemedia/devkit-addon@next
+pnpm add @slicemedia/devkit-addon@next
+yarn add @slicemedia/devkit-addon@next
+```
+
 ```ts
 import { createAddon, defineAddon } from "@slicemedia/devkit-addon";
 ```
@@ -20,6 +28,12 @@ await example.init();
 The example owns only `data-wft-example-state` on elements marked with `data-wft-example`, restores
 the authored value on teardown, and discovers later CMS content when refreshed. It is a reference
 for people and AI agents, not a behavior included by the root import.
+
+## Support and security
+
+See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for
+help and maintenance expectations. Report vulnerabilities through the
+[DevKit security policy](../../SECURITY.md), not a public issue.
 
 ## Project notice
 
