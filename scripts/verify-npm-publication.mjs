@@ -13,6 +13,9 @@ import {
   verifySourceCommit,
 } from "./npm-publication-contract.mjs";
 
+export const registryVerificationAttempts = 73;
+export const registryVerificationDelayMilliseconds = 15_000;
+
 async function fetchRegistryMetadata(name) {
   const response = await globalThis.fetch(`${npmRegistry}${encodeURIComponent(name)}`, {
     headers: { accept: "application/vnd.npm.install-v1+json" },
@@ -41,7 +44,7 @@ async function fetchVerifiedArchive(url, target) {
 
 async function verifyCandidate(candidate, temporaryDirectory) {
   let latestError;
-  for (let attempt = 1; attempt <= 10; attempt += 1) {
+  for (let attempt = 1; attempt <= registryVerificationAttempts; attempt += 1) {
     try {
       const metadata = await fetchRegistryMetadata(candidate.name);
       const errors = validateRegistryMetadata(metadata, candidate);
@@ -60,7 +63,9 @@ async function verifyCandidate(candidate, temporaryDirectory) {
     } catch (error) {
       latestError = error;
       await rm(resolve(temporaryDirectory, candidate.archive), { force: true });
-      if (attempt < 10) await delay(attempt * 2_000);
+      if (attempt < registryVerificationAttempts) {
+        await delay(registryVerificationDelayMilliseconds);
+      }
     }
   }
   throw latestError;

@@ -164,6 +164,7 @@ const expectedWorkflow = {
       needs: ["prepare", "publish"],
       if: `${repositoryGate} && needs.prepare.result == 'success' && needs.publish.result == 'success'`,
       "runs-on": "ubuntu-latest",
+      "timeout-minutes": 25,
       permissions: { contents: "read" },
       steps: [
         checkoutStep,

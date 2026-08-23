@@ -100,6 +100,11 @@ describe("npm next workflow structural policy", () => {
     );
   });
 
+  it("allows npm publication scanning to finish before verification times out", () => {
+    expect(workflow.match(/timeout-minutes: 25/gu)).toHaveLength(1);
+    expectRejected(workflow.replace("    timeout-minutes: 25", "    timeout-minutes: 10"));
+  });
+
   it.each([
     ["repository", (source) => source.replace("slicemedia/devkit", "example/devkit")],
     [
