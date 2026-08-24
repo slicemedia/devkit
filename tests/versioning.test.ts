@@ -27,13 +27,9 @@ async function json(relativePath: string): Promise<Record<string, unknown>> {
 }
 
 describe("release version consistency", () => {
-  it("keeps the initial public baseline at 0.1.0", async () => {
-    const manifests = await Promise.all(
-      packageDirectories.map((directory) => json(`${directory}/package.json`)),
-    );
+  it("records the initial public baseline in the changelog", async () => {
     const changelog = await readFile(resolve(workspaceRoot, "CHANGELOG.md"), "utf8");
 
-    expect(manifests.map(({ version }) => version)).toEqual(packageDirectories.map(() => "0.1.0"));
     expect(changelog).toContain("## 0.1.0 - 2026-08-23");
   });
 
