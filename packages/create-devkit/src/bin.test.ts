@@ -7,12 +7,19 @@ import {
   followUpCommands,
   installFailureMessage,
   installProjectDependencies,
+  multiSelectPromptMessage,
   parseCliArgs,
   type CommandSpawner,
   type SpawnedCommand,
 } from "./bin.js";
 
 describe("create-devkit CLI arguments", () => {
+  it("explains how to operate every multi-select prompt", () => {
+    expect(multiSelectPromptMessage("Optional capabilities")).toBe(
+      "Optional capabilities (use Space to select one or more; press Enter to continue)",
+    );
+  });
+
   it("accepts zero or one project directory, including the current directory", () => {
     expect(parseCliArgs([])).toEqual({ help: false });
     expect(parseCliArgs(["webflow-project"])).toEqual({
