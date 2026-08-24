@@ -58,7 +58,11 @@ const agentTargetLabels: Record<AgentTarget, string> = {
   claude: "Claude",
   cursor: "Cursor",
   copilot: "GitHub Copilot",
-  webflow: "Webflow AI",
+  webflow: "Webflow Agent Instructions",
+};
+
+const agentTargetHints: Partial<Record<AgentTarget, string>> = {
+  webflow: "Importable Markdown ZIP stored with the Webflow site",
 };
 
 const packageManagerLabels: Record<PackageManager, string> = {
@@ -128,6 +132,10 @@ function npmProjectName(value: string): boolean | string {
 
 function selectedLabel(values: readonly string[]): string {
   return values.length === 0 ? "none" : values.join(", ");
+}
+
+export function multiSelectPromptMessage(label: string): string {
+  return `${label} (use Space to select one or more; press Enter to continue)`;
 }
 
 function defaultSpawnCommand(
@@ -204,7 +212,7 @@ export async function runWizard(cliTargetDirectory?: string): Promise<void> {
   const { capabilities } = await Enquirer.prompt<{ capabilities: ProjectCapability[] }>({
     type: "multiselect",
     name: "capabilities",
-    message: "Optional capabilities",
+    message: multiSelectPromptMessage("Optional capabilities"),
     choices: PROJECT_CAPABILITIES.map((capability) => ({
       name: capability,
       message: capabilityLabels[capability],
@@ -213,10 +221,11 @@ export async function runWizard(cliTargetDirectory?: string): Promise<void> {
   const { agentTargets } = await Enquirer.prompt<{ agentTargets: AgentTarget[] }>({
     type: "multiselect",
     name: "agentTargets",
-    message: "Agent instruction targets",
+    message: multiSelectPromptMessage("Agent instruction targets"),
     choices: AGENT_TARGETS.map((target) => ({
       name: target,
       message: agentTargetLabels[target],
+      ...(agentTargetHints[target] === undefined ? {} : { hint: agentTargetHints[target] }),
     })),
   });
   const { packageManager } = await Enquirer.prompt<{ packageManager: PackageManager }>({

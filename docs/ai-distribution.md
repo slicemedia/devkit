@@ -11,4 +11,9 @@ Install dependencies with the package manager selected in the wizard, then run i
 output. Unselected platform files are not created. Agent Kit owns MCP version routing, skill
 validation, the standalone Codex plugin, and its generated metadata under `.slicemedia/agent-kit/`.
 
+Selecting the Webflow target generates a reviewed, importable Agent Instructions ZIP plus a local
+integrity manifest. It does not install a separate AI product, add another MCP server, or write to a
+remote Webflow site. Importing or updating the instructions remains a separately reviewed Webflow
+operation.
+
 Official Webflow skills remain external rather than being copied into DevKit.

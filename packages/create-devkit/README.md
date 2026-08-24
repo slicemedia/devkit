@@ -13,13 +13,20 @@ yarn dlx @slicemedia/create-devkit@next my-webflow-project
 Without a directory argument, the wizard proposes `webflow-project`. A literal `.` selects the
 current directory, which must be empty. The wizard asks for the npm name, package manager (pnpm,
 npm, or Yarn), optional capabilities, agent instruction targets, dependency installation, and final
-confirmation. It never overwrites a non-empty directory. Capabilities are opt-in and generate typed
+confirmation. Use Space to select or clear items in the multi-select lists, then press Enter to
+continue. It never overwrites a non-empty directory. Capabilities are opt-in and generate typed
 integration modules that remain disconnected from the project entry until the project chooses to
 compose them.
 
 Agent targets add the independent `@slicemedia/agent-kit` package and a deterministic
 `agents:generate` script. Run it through the selected package manager after installation to create
 only the selected platform files; DevKit does not bundle the Agent Kit source.
+
+The **Webflow Agent Instructions** target does not install another AI service or MCP server. It
+generates an importable Markdown ZIP and integrity manifest under `.slicemedia/agent-kit/`. After
+review, the ZIP can be imported into the intended Webflow site's Instructions panel so Webflow AI
+and external agents connected through the official Webflow MCP server can use the site-stored rules
+and skills.
 
 The package also exports the deterministic `scaffoldProject()` API with schema-v2 options and
 receipts for programmatic consumers, including the chosen package manager. DevKit source is MIT
