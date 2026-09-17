@@ -325,6 +325,8 @@ export interface CreateDeploymentPlanOptions {
   bucket: string;
   prefix: string;
   releaseVersion: string;
+  mode?: "stable" | "immutable";
+  cdnEndpointId?: string;
 }
 export declare function createDeploymentPlan(options: CreateDeploymentPlanOptions): Promise<SpacesDeploymentPlan>;
 export declare function applyDeploymentPlan(plan: SpacesDeploymentPlan, options: unknown): Promise<SpacesDeploymentReceipt>;
