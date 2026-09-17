@@ -192,6 +192,7 @@ export function createProjectTooltips(
       "DIGITALOCEAN_SPACES_ACCESS_KEY_ID",
       "DIGITALOCEAN_SPACES_SECRET_ACCESS_KEY",
       "DIGITALOCEAN_SPACES_SESSION_TOKEN",
+      "DIGITALOCEAN_TOKEN",
     ],
     integrationFile: "src/integrations/spaces-deployment.ts",
     renderIntegration: () => `import {
@@ -208,13 +209,14 @@ export interface ProjectSpacesPlanConfig {
   bucket: string;
   prefix: string;
   releaseVersion: string;
+  cdnEndpointId: string;
 }
 
-/** All deployment values are explicit; this helper supplies no account or project defaults. */
+/** Stable URLs with scoped CDN invalidation; all account and project values are explicit. */
 export function createProjectDeploymentPlan(
   config: ProjectSpacesPlanConfig,
 ): Promise<SpacesDeploymentPlan> {
-  return createDeploymentPlan(config);
+  return createDeploymentPlan({ ...config, mode: "stable" });
 }
 
 export { applyDeploymentPlan };

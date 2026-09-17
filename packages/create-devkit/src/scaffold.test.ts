@@ -291,8 +291,11 @@ describe("scaffoldProject", () => {
         expect(integration).not.toMatch(/https?:\/\//u);
         expect(integration).not.toContain("accessKeyId:");
         expect(integration).not.toContain("secretAccessKey:");
+        expect(integration).toContain('createDeploymentPlan({ ...config, mode: "stable" })');
+        expect(integration).toContain("cdnEndpointId: string;");
         const environment = await readFile(join(targetDirectory, ".env.example"), "utf8");
         expect(environment).toContain("DIGITALOCEAN_SPACES_SECRET_ACCESS_KEY=\n");
+        expect(environment).toContain("DIGITALOCEAN_TOKEN=\n");
       } else {
         expect(await readFile(join(targetDirectory, ".env.example"), "utf8")).not.toContain(
           "SPACES_",

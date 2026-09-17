@@ -61,7 +61,11 @@ createResponsiveSwiper({ target: "[data-wft-slider]", observeMutations: true }).
 In a generated project, use the selected manager's `dev` script for the CORS-enabled local server
 and its `build` script for the site-owned bundle. Hosting stays project-owned. Teams choosing
 DigitalOcean Spaces can install the independent `@slicemedia/spaces-deployer` package and use its
-reviewed plan/apply workflow.
+reviewed plan/apply workflow. The generated Spaces integration requires Spaces Deployer 0.2 or
+newer and selects stable URLs with scoped CDN invalidation. Supply a dedicated project prefix,
+the matching CDN endpoint ID, and a DigitalOcean API token during apply. Keep the bucket's object
+versioning enabled so prior files remain available for rollback. Immutable release URLs remain
+available through the deployer's explicit `immutable` mode.
 
 ## Product family
 

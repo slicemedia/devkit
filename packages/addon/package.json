@@ -1,6 +1,6 @@
 {
   "name": "@slicemedia/devkit-addon",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": false,
   "description": "Side-effect-free addon authoring primitives for Slice Media DevKit.",
   "author": "Slice Media",
