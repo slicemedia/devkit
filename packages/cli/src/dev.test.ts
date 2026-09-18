@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -7,7 +7,8 @@ import { expect, it } from "vitest";
 import { startDevServer } from "./dev.js";
 
 it("serves project code but denies private sourcemaps and normal sensitive files", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "devkit-private-dev-"));
+  // Vite rejects Windows 8.3 paths; resolve the runner's temporary directory first.
+  const root = await mkdtemp(path.join(await realpath(tmpdir()), "devkit-private-dev-"));
   await mkdir(path.join(root, ".slicemedia/sourcemaps"), { recursive: true });
   await mkdir(path.join(root, "src"));
   await writeFile(path.join(root, "src/main.ts"), 'document.title = "example";');
