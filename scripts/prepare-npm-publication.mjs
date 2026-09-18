@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 
 import {
   assertPackedManifest,
+  assertPublishedDevToolsDependencies,
   calculateArchiveMetadata,
   inspectPublicationArtifact,
   npmVersion,
@@ -78,6 +79,7 @@ async function main() {
   const releaseCommit = process.env.SLICEMEDIA_RELEASE_COMMIT ?? "";
   await verifySourceCommit(releaseCommit);
   const state = await readReleaseState();
+  await assertPublishedDevToolsDependencies(state);
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "slicemedia-devkit-pack-"));
   try {
     await rm(releaseDirectory, { force: true, recursive: true });
@@ -116,7 +118,8 @@ async function main() {
           npmVersion,
           packages: receiptPackages,
           pnpmVersion,
-          schemaVersion: 1,
+          schemaVersion: 2,
+          target: state.target,
           sourceCommit: releaseCommit,
           version: state.version,
         },
@@ -128,7 +131,7 @@ async function main() {
     await inspectPublicationArtifact(releaseCommit);
     await verifySourceCommit(releaseCommit);
     console.info(
-      `Prepared five commit-bound DevKit ${state.version} archives for protected publication.`,
+      `Prepared ${state.packages.length} commit-bound ${state.target} ${state.version} archives for protected publication.`,
     );
   } catch (error) {
     await rm(releaseDirectory, { force: true, recursive: true });

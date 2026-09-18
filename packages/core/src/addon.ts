@@ -1,5 +1,12 @@
 import { createEmitter } from "./emitter.js";
 import { DevKitAggregateError } from "./errors.js";
+import { freezeStructure } from "./structure.js";
+import {
+  freezeCondition,
+  resolveInspectionOptions,
+  validateConstraints,
+} from "./inspection-contract.js";
+import type { AddonDiagnostics, AddonInspectionContext } from "./inspection-types.js";
 import type {
   AddonDefinition,
   AddonDefinitionInput,
@@ -82,6 +89,7 @@ export function defineAddon<
       throw new AddonDefinitionError(`Addon attribute "${attribute.name}" is duplicated.`);
     }
     seenAttributes.add(attribute.name);
+    validateConstraints(attribute);
     return Object.freeze({
       ...attribute,
       ...(attribute.values ? { values: Object.freeze([...attribute.values]) } : {}),
@@ -94,15 +102,38 @@ export function defineAddon<
       throw new AddonDefinitionError(`Addon option "${option.name}" is duplicated.`);
     }
     seenOptions.add(option.name);
-    return Object.freeze({ ...option });
+    validateConstraints(option);
+    return Object.freeze({
+      ...option,
+      ...(option.values ? { values: Object.freeze([...option.values]) } : {}),
+    });
   });
 
   const dependencies = (input.dependencies ?? []).map((dependency) => {
     assertNonEmpty(dependency.name, "dependency name");
-    return Object.freeze({ ...dependency });
+    return Object.freeze({
+      ...dependency,
+      ...(dependency.when ? { when: freezeCondition(dependency.when) } : {}),
+    });
   });
 
   const lifecycle = [...new Set(input.lifecycle ?? DEFAULT_LIFECYCLE)];
+  if (input.scope !== undefined && !["component", "global"].includes(input.scope))
+    throw new AddonDefinitionError("scope must be component or global.");
+  for (const hook of [input.inspect, input.resolveOptions])
+    if (hook !== undefined && typeof hook !== "function")
+      throw new AddonDefinitionError("Inspection hooks must be functions.");
+
+  let structure: AddonMetadata<Options>["structure"];
+  if (input.structure) {
+    try {
+      structure = freezeStructure(input.structure, seenAttributes, input.defaultOptions);
+    } catch (error) {
+      throw new AddonDefinitionError(
+        error instanceof Error ? error.message : "Invalid markup structure.",
+      );
+    }
+  }
 
   return Object.freeze({
     name: input.name,
@@ -115,6 +146,10 @@ export function defineAddon<
     placement: input.placement ?? "body-end",
     entry: input.entry,
     lifecycle: Object.freeze(lifecycle),
+    ...(structure ? { structure } : {}),
+    ...(input.scope ? { scope: input.scope } : {}),
+    ...(input.inspect ? { inspect: input.inspect } : {}),
+    ...(input.resolveOptions ? { resolveOptions: input.resolveOptions } : {}),
     ...(input.usage
       ? {
           usage: Object.freeze({
@@ -144,6 +179,8 @@ export function getAddonMetadata<Options extends object>(
     entry: definition.entry,
     lifecycle: definition.lifecycle,
     ...(definition.usage ? { usage: definition.usage } : {}),
+    ...(definition.structure ? { structure: definition.structure } : {}),
+    ...(definition.scope ? { scope: definition.scope } : {}),
   });
 }
 
@@ -177,6 +214,7 @@ class AddonInstanceImplementation<
   private abortController: AbortController | undefined;
   private cleanupStack: Cleanup[] = [];
   private operationTail: Promise<void> = Promise.resolve();
+  private lastFailure: string | undefined;
 
   constructor(
     definition: AddonDefinition<Options, State, Events>,
@@ -199,6 +237,37 @@ class AddonInstanceImplementation<
     return this.currentOptions;
   }
 
+  private inspectionContext(root?: Element): AddonInspectionContext<Options> {
+    const environment = resolveEnvironment(this.environmentInput);
+    if (root && root.ownerDocument !== environment.document)
+      throw new AddonLifecycleError("Inspection root belongs to another document.");
+    return {
+      ...environment,
+      options: this.currentOptions,
+      status: this.currentStatus,
+      ...(root ? { root } : {}),
+    };
+  }
+
+  resolveOptions(root: Element): Readonly<Options> {
+    return resolveInspectionOptions(this.definition, this.inspectionContext(root));
+  }
+
+  inspect(root?: Element): AddonDiagnostics {
+    const context = this.inspectionContext(root);
+    if (this.currentStatus === "error")
+      return { state: "error", message: this.lastFailure ?? "Addon lifecycle failed." };
+    const inspect = this.hooks?.inspect ?? this.definition.inspect;
+    const report = inspect?.({
+      ...context,
+      options: root ? this.resolveOptions(root) : context.options,
+    }) ?? {
+      state: "unverified" as const,
+      message: "No runtime diagnostic provider declared.",
+    };
+    return report;
+  }
+
   init(): Promise<void> {
     return this.enqueue(() => this.initialize());
   }
@@ -215,6 +284,7 @@ class AddonInstanceImplementation<
       try {
         await this.hooks?.refresh?.();
         this.setStatus("ready");
+        this.lastFailure = undefined;
         this.emitCore("refresh", { status: this.currentStatus });
       } catch (error) {
         this.setStatus("error");
@@ -308,6 +378,7 @@ class AddonInstanceImplementation<
       this.hooks = await this.definition.setup(context);
       await this.hooks.init?.();
       this.setStatus("ready");
+      this.lastFailure = undefined;
       this.emitCore("init", { status: this.currentStatus });
     } catch (initializationError) {
       const teardownErrors = await this.teardown(true);
@@ -351,6 +422,7 @@ class AddonInstanceImplementation<
         return getOptions();
       },
       signal: controller.signal,
+      resolveOptions: (root) => this.resolveOptions(root),
       emit,
       onCleanup,
     };
@@ -394,6 +466,10 @@ class AddonInstanceImplementation<
   private emitCore<
     EventName extends "status" | "error" | "options" | "init" | "refresh" | "destroy",
   >(event: EventName, payload: AddonInstanceEventMap<Options, object>[EventName]): void {
+    if (event === "error" && "error" in payload) {
+      const error = payload.error;
+      this.lastFailure = error instanceof Error ? error.message : String(error);
+    }
     this.emitter.emit(event, payload);
   }
 }

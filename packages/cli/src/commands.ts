@@ -152,6 +152,25 @@ async function runDoctor(root: string, env: NodeJS.ProcessEnv): Promise<CommandR
     status: hasToken(env) ? "pass" : "warn",
     detail: hasToken(env) ? "Configured" : "Not configured; required only for API commands",
   });
+  try {
+    const entries = await discoverAddonEntries(root);
+    const missing = entries.filter(
+      (entry) => entry.kind !== "project" && !entry.structure && entry.scope !== "global",
+    );
+    checks.push({
+      name: "inspection-contracts",
+      status: missing.length ? "warn" : "pass",
+      detail: missing.length
+        ? `No component structure or global scope declared: ${missing.map((entry) => entry.name).join(", ")}. Add inert definition metadata for DevTools and explain/catalog.`
+        : "Discovered addons declare component structure or global scope.",
+    });
+  } catch (error) {
+    checks.push({
+      name: "inspection-contracts",
+      status: "warn",
+      detail: `Cannot read inspection metadata: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
   const ok = !checks.some((check) => check.status === "fail");
   return {
     ok,

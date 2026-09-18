@@ -22,7 +22,8 @@ configuration changes before regenerating the deployment manifest.
 
 Add `usage: { setup, markup?, notes? }` to an addon's `defineAddon()` metadata. Attribute
 descriptions, types, requirements, allowed values, options, defaults, dependencies, and lifecycle
-methods come from that same definition. The setup guide does not execute its `setup()` function.
+methods come from that same definition. Optional `structure` metadata adds a connected markup tree
+shared with the browser inspector; see [shared markup requirements](markup-structure.md). The setup guide does not execute its `setup()` function.
 
 Projects can export an inert `addonDefinitions` array from `src/index.ts`, or explicitly select a
 named export in `devkit.config.json`:
@@ -45,7 +46,7 @@ named export in `devkit.config.json`:
 The named export must describe the same addon name. Discovery imports this explicitly selected
 module locally, so select only trusted, side-effect-free metadata modules. Never select a browser
 composition entry that initializes the site. Existing JSON metadata and `*.addon.json` sidecars
-remain supported; they can declare `usage` and `attributeDetails` without executing a module.
+remain supported; they can declare `usage`, `structure`, and `attributeDetails` without executing a module.
 
 Public addon entries automatically receive a build contract pointing to their own script under
 `addons/` with optional adjacent CSS; project entries use `projects/`. Marked `.entry.ts` / `.entry.js`

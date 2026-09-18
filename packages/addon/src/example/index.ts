@@ -49,6 +49,13 @@ export const exampleAddonDefinition = defineAddon<
   dependencies: [{ name: "@slicemedia/devkit-core", kind: "package" }],
   placement: "body-end",
   entry: "@slicemedia/devkit-addon/example",
+  structure: {
+    id: "example",
+    label: "Example element",
+    selector: `[${ROOT_ATTRIBUTE}]`,
+    selectorOption: "selector",
+    attributes: [{ name: ROOT_ATTRIBUTE, required: true }],
+  },
   usage: {
     setup: [
       "Add data-wft-example to a Webflow element.",

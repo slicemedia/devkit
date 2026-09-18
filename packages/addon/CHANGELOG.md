@@ -1,5 +1,39 @@
 # @slicemedia/devkit-addon
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [56d2ae0]
+- Updated dependencies [885dbac]
+  - @slicemedia/devkit-core@0.5.0
+
+## 0.4.0
+
+### Minor Changes
+
+- 68f7010: Expose conditional markup requirements, count and key relationships, shared per-root option
+  resolution, and read-only runtime diagnostics. Keep failed initialization inspectable with
+  initializeAddon, and show unknown or failing providers as unverified. Share constraints with
+  explain/catalog and report missing contracts in doctor.
+
+  Ship a standalone devtools.global.js browser artifact in the separate DevTools package with production opt-in, add an optional
+  DevTools creator capability, and include inert authoring templates for future addons.
+
+- 68f7010: Share optional structured markup requirements between addon metadata, CLI setup guides, and the
+  on-page inspector. Validate nested element roles per parent, resolve explicitly mapped instance
+  selector options, and show required/optional attributes and live findings in a connected tree.
+  Include setup instructions and inert markup examples, preserve disclosure state during rescans,
+  and keep legacy contracts and the dormant production activation policy compatible.
+
+### Patch Changes
+
+- Updated dependencies [68f7010]
+- Updated dependencies [68f7010]
+- Updated dependencies [68f7010]
+- Updated dependencies [68f7010]
+  - @slicemedia/devkit-core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -93,7 +93,7 @@ async function main() {
     await rm(temporaryDirectory, { force: true, recursive: true });
   }
   console.info(
-    `Verified all five DevKit ${state.version} archives without OIDC; no tag, GitHub Release, or latest promotion was created.`,
+    `Verified ${state.packages.length} ${state.target} ${state.version} archives without OIDC; no tag, GitHub Release, or latest promotion was created.`,
   );
 }
 

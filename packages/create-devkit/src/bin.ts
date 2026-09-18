@@ -51,6 +51,7 @@ const capabilityLabels: Record<ProjectCapability, string> = {
   animations: "Animations (GSAP)",
   tooltips: "Tooltips (Tippy.js)",
   "digitalocean-spaces": "DigitalOcean Spaces deployment",
+  devtools: "On-page DevTools inspector",
 };
 
 const agentTargetLabels: Record<AgentTarget, string> = {

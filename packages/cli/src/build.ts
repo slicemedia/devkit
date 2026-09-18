@@ -117,6 +117,7 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
           format: "iife",
           intro:
             'const __slicemediaEntryUrl = typeof document === "undefined" ? "" : (document.currentScript ? document.currentScript.src : "");',
+          comments: { legal: true, annotation: false, jsdoc: false },
           entryFileNames: input.scriptFileName,
           assetFileNames: (asset) =>
             asset.name === "style.css" ? input.cssFileName : "assets/[name]-[hash][extname]",

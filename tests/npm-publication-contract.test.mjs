@@ -8,6 +8,8 @@ import {
   isProhibitedPublicationVariable,
   packageDefinitions,
   readReleaseState,
+  releaseTarget,
+  validateDevToolsCoreMetadata,
   validateNoPublicationOverrides,
   validatePackedManifest,
   validatePublicationEnvironment,
@@ -20,6 +22,7 @@ const commit = "1".repeat(40);
 const version = "0.2.0";
 const state = {
   version,
+  target: "devkit",
   packages: packageDefinitions.map((definition) => ({ ...definition, version })),
 };
 const packages = state.packages.map((package_, index) => ({
@@ -34,7 +37,8 @@ const receipt = {
   npmVersion: "11.19.0",
   packages,
   pnpmVersion: "11.21.0",
-  schemaVersion: 1,
+  schemaVersion: 2,
+  target: "devkit",
   sourceCommit: commit,
   version,
 };
@@ -60,8 +64,38 @@ function packedManifest(package_) {
 }
 
 describe("npm publication contract", () => {
+  it("releases DevTools independently and binds its compatible core range", async () => {
+    const selected = await readReleaseState({ target: "devtools" });
+    expect(selected.packages.map(({ name }) => name)).toEqual(["@slicemedia/devtools"]);
+    const expected = selected.packages[0];
+    const manifest = {
+      ...packedManifest(expected),
+      version: expected.version,
+      dependencies: { ...expected.internalDependencyRanges },
+    };
+    expect(validatePackedManifest(manifest, expected)).toEqual([]);
+    manifest.dependencies["@slicemedia/devkit-core"] = "^0.2.0";
+    expect(validatePackedManifest(manifest, expected)).not.toEqual([]);
+    expect(validateReceiptShape({ ...receipt, target: "devtools" }, state, commit)).not.toEqual([]);
+    expect(() => releaseTarget({ SLICEMEDIA_RELEASE_TARGET: "all" })).toThrow();
+  });
+
+  it("refuses a DevTools release against unpublished or incompatible core metadata", () => {
+    const metadata = {
+      name: "@slicemedia/devkit-core",
+      version: "0.4.0",
+      exports: {
+        "./inspection": { import: "./dist/inspection.js", types: "./dist/inspection.d.ts" },
+      },
+    };
+    expect(validateDevToolsCoreMetadata(metadata, "0.4.0")).toEqual([]);
+    expect(validateDevToolsCoreMetadata(undefined, "0.4.0")).not.toEqual([]);
+    expect(validateDevToolsCoreMetadata(metadata, "0.5.0")).not.toEqual([]);
+    expect(validateDevToolsCoreMetadata({ ...metadata, exports: {} }, "0.4.0")).not.toEqual([]);
+  });
+
   it("accepts the reviewed public source metadata", async () => {
-    const releaseState = await readReleaseState();
+    const releaseState = await readReleaseState({ target: "devkit" });
     expect(releaseState.packages).toHaveLength(packageDefinitions.length);
   });
 

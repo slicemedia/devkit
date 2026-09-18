@@ -21,6 +21,10 @@ Importing either entry does not install a global runtime, initialize behavior, o
 addon example. Applications that want the smallest dependency surface may continue to install and
 import `@slicemedia/devkit-core` or `@slicemedia/devkit-addon` directly.
 
+Install the separate optional [`@slicemedia/devtools` package](../devtools/README.md) and import
+`createDevTools` from it for the on-page inspector. It shows registered addons and audits declared
+attribute contracts. This convenience package does not depend on or bundle the inspector.
+
 ## Support and security
 
 See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for

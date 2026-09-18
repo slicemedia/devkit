@@ -47,6 +47,11 @@ import { createBreakpointService } from "@slicemedia/devkit";
 import { defineAddon } from "@slicemedia/devkit/addon";
 ```
 
+An optional [on-page DevTools inspector](packages/devtools/README.md) is available as the
+independently versioned `@slicemedia/devtools` package. Its floating button opens an
+addon list and a read-only attribute audit. Projects explicitly enable it and supply markup
+contracts for accurate missing-attribute checks.
+
 ```ts
 // Optional addon reference; never loaded by the package root.
 import { createExampleAddon } from "@slicemedia/devkit-addon/example";
@@ -83,6 +88,8 @@ release URLs remain available through the deployer's explicit `immutable` mode.
 
 - **Slice Media DevKit** — optional `@slicemedia/devkit` convenience entry, core lifecycle, addon
   API, local/read-only CLI, creator, and starter
+- **[Slice Media DevTools](packages/devtools/README.md)** — optional inspector with independent
+  releases, module imports, and a ready-made browser script for addon/CDN hosting
 - **[Slice Media Agent Kit](https://github.com/slicemedia/agent-kit)** — independently maintained,
   target-selective Codex, Claude, Cursor, Copilot, and Webflow instructions
 - **[Slice Media Swiper Adapter](https://github.com/slicemedia/swiper-adapter)** — optional

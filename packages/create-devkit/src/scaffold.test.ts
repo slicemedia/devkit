@@ -15,6 +15,7 @@ import {
 } from "./scaffold.js";
 import {
   DEFAULT_DEVKIT_VERSION_RANGE,
+  DEFAULT_DEVTOOLS_VERSION_RANGE,
   EXTERNAL_PRODUCT_VERSION_RANGES,
 } from "./versions.generated.js";
 
@@ -75,6 +76,11 @@ const capabilityExpectations: Record<
   ProjectCapability,
   { dependencies: Record<string, string>; integration: string; markers: string[] }
 > = {
+  devtools: {
+    dependencies: { "@slicemedia/devtools": DEFAULT_DEVTOOLS_VERSION_RANGE },
+    integration: "src/addons/devtools.ts",
+    markers: ['from "@slicemedia/devtools"', "devtools.init()", "hot?.dispose"],
+  },
   slider: {
     dependencies: {
       "@slicemedia/swiper-adapter": EXTERNAL_PRODUCT_VERSION_RANGES.swiperAdapter,
@@ -297,6 +303,15 @@ describe("scaffoldProject", () => {
         const environment = await readFile(join(targetDirectory, ".env.example"), "utf8");
         expect(environment).toContain("DIGITALOCEAN_SPACES_SECRET_ACCESS_KEY=\n");
         expect(environment).toContain("DIGITALOCEAN_TOKEN=\n");
+      } else if (capability === "devtools") {
+        const config = JSON.parse(
+          await readFile(join(targetDirectory, "devkit.config.json"), "utf8"),
+        );
+        expect(config.vendors).toBeUndefined();
+        expect(config.entries).toContainEqual(
+          expect.objectContaining({ name: "devtools", input: "src/addons/devtools.ts" }),
+        );
+        expect(await exists(join(targetDirectory, "src/vendors/devtools.ts"))).toBe(false);
       } else {
         const vendor = await readFile(
           join(targetDirectory, "src/vendors", `${capability}.ts`),
@@ -375,22 +390,23 @@ describe("scaffoldProject", () => {
     const devkitConfig = JSON.parse(
       await readFile(join(targetDirectory, "devkit.config.json"), "utf8"),
     ) as { entries: Array<{ api: { capabilities: ProjectCapability[] } }> };
-    expect(devkitConfig.entries).toHaveLength(1);
+    expect(devkitConfig.entries).toHaveLength(2);
     expect(devkitConfig.entries[0]?.api.capabilities).toEqual(PROJECT_CAPABILITIES);
     expect(await readFile(join(targetDirectory, "src", "main.ts"), "utf8")).not.toContain(
       "integrations/",
     );
   });
 
-  it("supports independent external product versions", async () => {
+  it("supports independent optional product versions", async () => {
     const targetDirectory = await createTarget("versions");
     const receipt = await scaffoldProject({
       targetDirectory,
       projectName: "versions-project",
       packageManager: "pnpm",
-      capabilities: ["slider", "digitalocean-spaces"],
+      capabilities: ["slider", "digitalocean-spaces", "devtools"],
       agentTargets: ["codex"],
       devkitVersion: "1.2.0",
+      devtoolsVersion: "^5.0.0",
       agentKitVersion: "~2.0.0-rc.1",
       swiperAdapterVersion: ">=3.0.0 <4.0.0",
       spacesDeployerVersion: "4.0.0 - 4.9.9",
@@ -399,6 +415,7 @@ describe("scaffoldProject", () => {
 
     expect(receipt.dependencies).toMatchObject({
       "@slicemedia/devkit-core": "1.2.0",
+      "@slicemedia/devtools": "^5.0.0",
       "@slicemedia/swiper-adapter": ">=3.0.0 <4.0.0",
       "@slicemedia/spaces-deployer": "4.0.0 - 4.9.9",
     });
@@ -424,9 +441,13 @@ describe("scaffoldProject", () => {
       ["github", "github:example/package"],
       ["malformed", "^1..2"],
     ].flatMap(([category, range]) =>
-      ["devkitVersion", "agentKitVersion", "swiperAdapterVersion", "spacesDeployerVersion"].map(
-        (option) => [option, category, range] as const,
-      ),
+      [
+        "devkitVersion",
+        "devtoolsVersion",
+        "agentKitVersion",
+        "swiperAdapterVersion",
+        "spacesDeployerVersion",
+      ].map((option) => [option, category, range] as const),
     ),
   )("rejects %s %s dependency override %j before writing", async (option, category, range) => {
     const targetDirectory = await createTarget(`invalid-${option}-${category}`);

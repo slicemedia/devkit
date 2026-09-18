@@ -93,3 +93,21 @@ dedicated prefix and CDN endpoint; bucket versioning is optional. Reapplying the
 approved plan can retry failed uploads or purging. Deployments are not atomic across multiple
 files, so serialize CI writers and retain matching addon/vendor artifacts for rollback.
 See [deployment](https://github.com/slicemedia/devkit/blob/main/docs/deployment.md).
+
+## Inspection contracts and optional DevTools
+
+Copy and rename the ignored `src/features/_template.ts` and `src/addons/_template.ts` files for a
+new enhancement. Implement its behavior and read-only diagnostics; the templates themselves never
+run or become build entries. Use the same `context.resolveOptions(root)` for runtime behavior and
+inspection, and `initializeAddon(runtime, instance)` to keep failed initialization inspectable.
+Map the inert definition module/export in `devkit.config.json` so explain/catalog share its rules.
+See the [inspection API](https://github.com/slicemedia/devkit/blob/main/docs/inspection-api.md).
+
+Selecting the DevTools capability installs the optional `@slicemedia/devtools` package and adds
+`src/addons/devtools.ts`, built as `dist/addons/devtools.js`. It can also be installed and imported later.
+Deploy and include this script once with defer in the head. It automatically activates on webflow.io;
+on custom domains use `window.DevKitDevTools.enabled = true` and click the launcher. The flag,
+window size, and opacity persist only after interaction. Normal production visitors get no storage
+writes or scans. The `@slicemedia/devtools` package's `dist/devtools.global.js` is also a standalone
+hosting option. Addons need registered metadata for full inspection; load order does not matter
+when opening the panel or choosing Rescan.

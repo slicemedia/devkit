@@ -122,7 +122,7 @@ describe("npm next workflow structural policy", () => {
     expectRejected(workflow.replace("          path: .npm-release", "          path: ."));
     expectRejected(
       workflow.replace(
-        "devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}",
+        "${{ inputs.release_target }}-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}",
         "devkit-npm-latest",
       ),
     );

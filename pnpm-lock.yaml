@@ -127,6 +127,22 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
+  packages/devtools:
+    dependencies:
+      '@slicemedia/devkit-core':
+        specifier: workspace:^
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.2.1(@types/node@22.20.1)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@22.20.1)(jsdom@30.0.1)(vite@8.2.1(@types/node@22.20.1)(yaml@2.9.0))
+
   templates/starter:
     dependencies:
       '@slicemedia/devkit-core':

@@ -15,6 +15,7 @@ describe("addon authoring package", () => {
       "createAddon",
       "defineAddon",
       "getAddonMetadata",
+      "initializeAddon",
     ]);
     expect("exampleAddonDefinition" in addonApi).toBe(false);
     expect("slicemediaDevKit" in window).toBe(false);

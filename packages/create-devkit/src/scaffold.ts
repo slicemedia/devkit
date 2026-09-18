@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   DEFAULT_DEVKIT_VERSION_RANGE,
+  DEFAULT_DEVTOOLS_VERSION_RANGE,
   EXTERNAL_PRODUCT_VERSION_RANGES,
 } from "./versions.generated.js";
 
@@ -22,6 +23,7 @@ export const PROJECT_CAPABILITIES = [
   "animations",
   "tooltips",
   "digitalocean-spaces",
+  "devtools",
 ] as const;
 
 export type ProjectCapability = (typeof PROJECT_CAPABILITIES)[number];
@@ -41,6 +43,7 @@ export interface ScaffoldOptions {
   capabilities: readonly ProjectCapability[];
   agentTargets: readonly AgentTarget[];
   devkitVersion?: string;
+  devtoolsVersion?: string;
   agentKitVersion?: string;
   swiperAdapterVersion?: string;
   spacesDeployerVersion?: string;
@@ -63,6 +66,7 @@ export interface ScaffoldReceipt {
 
 interface ResolvedVersions {
   devkit: string;
+  devtools: string;
   agentKit: string;
   swiperAdapter: string;
   spacesDeployer: string;
@@ -128,6 +132,19 @@ const baseDependencies = (versions: ResolvedVersions): Readonly<Record<string, s
 });
 
 const capabilityDefinitions: Record<ProjectCapability, CapabilityDefinition> = {
+  devtools: {
+    dependencies: (versions) => ({ "@slicemedia/devtools": versions.devtools }),
+    integrationFile: "src/addons/devtools.ts",
+    renderIntegration: () => `import { createDevTools } from "@slicemedia/devtools";
+
+const devtools = createDevTools();
+devtools.init();
+const hot = (import.meta as ImportMeta & {
+  hot?: { dispose(callback: () => void): void };
+}).hot;
+hot?.dispose(() => devtools.destroy());
+`,
+  },
   slider: {
     dependencies: (versions) => ({
       "@slicemedia/swiper-adapter": versions.swiperAdapter,
@@ -302,6 +319,7 @@ function assertNpmSemverRange(value: unknown, label: string): asserts value is s
 function resolveVersions(options: ScaffoldOptions): ResolvedVersions {
   const versions = {
     devkit: options.devkitVersion ?? DEFAULT_DEVKIT_VERSION_RANGE,
+    devtools: options.devtoolsVersion ?? DEFAULT_DEVTOOLS_VERSION_RANGE,
     agentKit: options.agentKitVersion ?? EXTERNAL_PRODUCT_VERSION_RANGES.agentKit,
     swiperAdapter: options.swiperAdapterVersion ?? EXTERNAL_PRODUCT_VERSION_RANGES.swiperAdapter,
     spacesDeployer: options.spacesDeployerVersion ?? EXTERNAL_PRODUCT_VERSION_RANGES.spacesDeployer,
@@ -550,7 +568,7 @@ async function configureDevKitEntry(
 ): Promise<void> {
   const configPath = join(target, "devkit.config.json");
   const config = JSON.parse(await readFile(configPath, "utf8")) as {
-    entries?: Array<{ api?: Record<string, unknown> }>;
+    entries?: Array<Record<string, unknown> & { api?: Record<string, unknown> }>;
     vendors?: Array<{ name: string; input: string }>;
   };
   if (config.entries?.length !== 1 || config.entries[0] === undefined) {
@@ -561,6 +579,31 @@ async function configureDevKitEntry(
     .filter((capability) => capabilityDefinitions[capability].renderVendor)
     .map((name) => ({ name, input: `src/vendors/${name}.ts` }));
   if (vendors.length) config.vendors = vendors;
+  if (capabilities.includes("devtools"))
+    config.entries.push({
+      name: "devtools",
+      input: "src/addons/devtools.ts",
+      description: "Optional on-page inspector for registered DevKit addons.",
+      placement: "head",
+      scope: "global",
+      dependencies: [],
+      attributes: [],
+      scriptAttributes: {},
+      api: {
+        global: "DevKitDevTools",
+        enabled: "boolean",
+        methods: ["open", "close", "refresh", "getSnapshot", "destroy"],
+      },
+      usage: {
+        setup: [
+          "Deploy dist/addons/devtools.js and include it once with defer in the head.",
+          "On custom domains, enable through window.DevKitDevTools.enabled = true; then click the launcher.",
+        ],
+        notes: [
+          "Auto-enabled only on webflow.io. Addons must register inspection metadata; load order does not matter for Open or Rescan.",
+        ],
+      },
+    });
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
 }
 

@@ -1,0 +1,68 @@
+{
+  "name": "@slicemedia/devtools",
+  "version": "0.1.1",
+  "private": false,
+  "description": "Optional on-page addon inspector for Webflow projects using Slice Media DevKit.",
+  "author": "Slice Media",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicemedia/devkit.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://github.com/slicemedia/devkit/tree/main/packages/devtools#readme",
+  "bugs": {
+    "url": "https://github.com/slicemedia/devkit/issues"
+  },
+  "keywords": [
+    "slicemedia",
+    "webflow",
+    "devtools",
+    "inspector",
+    "addons"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "./dist/devtools.global.js"
+  ],
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/devtools.global.js",
+  "jsdelivr": "./dist/devtools.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./devtools.global.js": "./dist/devtools.global.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25"
+  },
+  "scripts": {
+    "build": "node scripts/prepare-build.mjs && tsc -p tsconfig.build.json && node scripts/build-browser.mjs",
+    "test": "vitest run --root ../.. packages/devtools/test tests/devtools-browser-bundle.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@slicemedia/devkit-core": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

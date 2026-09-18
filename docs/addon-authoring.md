@@ -19,6 +19,12 @@ first. Webflow owns markup and base styles; the animation addon owns timelines, 
 responsive behavior, and cleanup. Simple CSS effects and straightforward Designer-owned
 Interactions remain appropriate exceptions. See [animation authoring](animation-authoring.md).
 
+Declare nested element roles in optional [shared markup requirements](markup-structure.md) so the
+CLI setup guide and inspector use the same attribute placement rules. The [inspection API](inspection-api.md)
+adds conditional rules, counts, matching keys, shared option resolution, and read-only runtime
+diagnostics. Use `initializeAddon(runtime, instance)` in browser entries so failed startup stays
+inspectable while public APIs become ready only after success.
+
 Keep setup steps, neutral markup, and notes in the definition's optional `usage` metadata.
 [Generated setup guides](setup-guides.md) combine it with attributes, options, dependencies, and
 the addon's standalone build contract. Register public APIs only after initialization when exposing
