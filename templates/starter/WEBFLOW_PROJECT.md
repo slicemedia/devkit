@@ -1,12 +1,16 @@
 # Webflow project guidance
 
-Webflow owns editable structure, components, styles, CMS content, forms, and native interactions.
-This project owns only explicitly authored browser enhancements. Put each public addon entry in
+Webflow owns editable structure, components, base styles, CMS content, and forms. This project owns
+explicitly authored browser enhancements and custom animation addons. Put each public addon entry in
 `src/addons/<name>.ts` or `src/addons/<name>/index.ts`; each builds to its own
 `dist/addons/<name>.js` and optional stylesheet. Load only the scripts needed on each Webflow page.
 Use `src/main.ts` or `src/projects/` only for optional, deliberately composed project behavior.
 
-- Prefer native Webflow features before adding code.
+- Prefer native Webflow layout, content, forms, and base styling. Animate existing markup.
+- Honor the user's animation approach first. Prefer GSAP addons for custom animation work; use CSS
+  for simple state effects or native Interactions when they are clearly sufficient and Designer
+  ownership is useful. Choosing GSAP does not require proving native Interactions are incapable.
+  Preserve existing animation ownership unless changing it is part of the request.
 - Use documented, scoped `data-wft-*` hooks instead of generated classes or guessed identifiers.
 - Keep optional files under `src/integrations/` disconnected until their markup contract is ready.
 - Make initialization idempotent and restore owned DOM, attributes, listeners, observers, and timers

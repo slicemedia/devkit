@@ -2,13 +2,18 @@
 
 Slice Media DevKit is AI-first development infrastructure for teams building with Webflow. It is a
 neutral starting point for small enhancements and large codebases alike: Webflow keeps ownership of
-editable layout, components, styles, CMS, forms, and content, while the addon scripts add only the
-interactive behavior Webflow does not provide.
+editable layout, components, styles, CMS, forms, and content, while addon scripts provide explicitly
+selected interactive behavior and custom animations on that markup.
 
 Under the hood, DevKit provides a typed browser lifecycle, an addon authoring API, a local
 development/build CLI, read-only Webflow inspection, and an interactive project wizard. Every
 public addon builds into its own standalone ES2018 IIFE plus optional CSS. Generated projects start without feature markup,
 selectors, integrations, or hosting assumptions.
+
+For custom animation work, prefer GSAP addons while keeping markup and base styles editable in
+Webflow. Follow an explicit user choice first; CSS is suitable for simple state effects, and native
+Interactions are suitable when straightforward motion benefits from Designer ownership. See
+[animation authoring](docs/animation-authoring.md) for the decision and lifecycle guidance.
 
 ## Start a project
 

@@ -4,7 +4,8 @@ This workspace contains Slice Media DevKit, AI-first development infrastructure 
 
 ## Boundaries
 
-- Prefer Webflow-native layout, components, CMS, forms, variables, and interactions. Add browser code only where Webflow does not provide the required behavior.
+- Prefer Webflow-native layout, components, CMS, forms, variables, and base styling. Keep browser code focused on behavior attached to existing Webflow markup.
+- Honor the user's animation approach first. Prefer GSAP addons for custom animation work; use CSS for simple state effects or native Webflow Interactions when they are clearly sufficient and Designer ownership is useful. Choosing GSAP does not require proving that native Interactions are incapable. Preserve existing animation ownership unless changing it is part of the request.
 - Use neutral `data-wft-*` hooks. Never introduce client names, assets, URLs, site IDs, component IDs, credentials, copied production markup, or project fallback selectors.
 - Keep package ESM imports side-effect-free. Consumer-owned entries under `src/addons/` build into separate standalone IIFEs at `dist/addons/<name>.js`, with optional per-addon CSS. Optional project entries compose only deliberately selected behavior; never force every addon into one site bundle.
 - Make lifecycle initialization idempotent and destruction complete. Preserve DOM, attributes, accessibility state, and remote data that the code does not own.

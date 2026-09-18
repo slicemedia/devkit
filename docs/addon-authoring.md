@@ -13,6 +13,11 @@ its neutral contract, and import the finished behavior from its own browser entr
 Use only documented `data-wft-*` hooks, preserve unrelated DOM state, and test multiple instances,
 missing/delayed markup, CMS mutation, cleanup, and relevant keyboard or reduced-motion behavior.
 
+Prefer GSAP addons for custom animation requests, following the user's chosen animation approach
+first. Webflow owns markup and base styles; the animation addon owns timelines, ScrollTriggers,
+responsive behavior, and cleanup. Simple CSS effects and straightforward Designer-owned
+Interactions remain appropriate exceptions. See [animation authoring](animation-authoring.md).
+
 Keep setup steps, neutral markup, and notes in the definition's optional `usage` metadata.
 [Generated setup guides](setup-guides.md) combine it with attributes, options, dependencies, and
 the addon's standalone build contract. Register public APIs only after initialization when exposing

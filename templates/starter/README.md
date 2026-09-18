@@ -51,3 +51,17 @@ and the matching generated skill.
 
 Copy `.env.example` to an ignored local file only when needed, and load it through your shell or CI.
 Never commit site IDs, domains, tokens, deployment credentials, or client fixtures.
+
+## Animation ownership
+
+Prefer GSAP addons for custom animation requests while keeping structure and base styling in
+Webflow. Follow an explicit user choice of GSAP, CSS, native Interactions, or another approach.
+For unspecified choices, simple state effects can use CSS, and straightforward motion maintained
+visually by designers can use native Interactions. A GSAP addon does not need proof that native
+Interactions cannot reproduce the effect.
+
+When the animations capability is selected, import the optional `src/integrations/animations.ts`
+module only from the addon or project entry that needs it. Scope animation state to each root,
+implement refresh and complete teardown, and respect reduced motion. Preserve existing animation
+owners unless a migration is requested. See
+[animation authoring](https://github.com/slicemedia/devkit/blob/main/docs/animation-authoring.md).

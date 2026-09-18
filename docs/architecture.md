@@ -35,6 +35,12 @@ The three optional products
 are maintained in independent repositories and versions; DevKit references them only when selected.
 No package installs globals on import, chooses hosting, or writes Webflow state.
 
-Webflow remains responsible for editable structure, components, CMS, styles, and native
-interactions. The official Webflow MCP server handles explicitly requested remote inspection and
-changes; the DevKit CLI remains local or read-only.
+Webflow remains responsible for editable structure, components, CMS, and base styles. Custom
+animation work normally belongs to a GSAP addon with its own timeline, scroll coordination, and
+lifecycle. Explicit user choices take precedence; simple CSS effects and straightforward
+Designer-owned Interactions remain suitable alternatives. Selecting GSAP does not depend on
+native Interactions being unable to reproduce the effect. See
+[animation authoring](animation-authoring.md).
+
+The official Webflow MCP server handles explicitly requested remote inspection and changes; the
+DevKit CLI remains local or read-only.
