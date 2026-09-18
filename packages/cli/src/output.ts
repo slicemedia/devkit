@@ -16,7 +16,18 @@ export function writeResult(
   writer: OutputWriter = consoleWriter,
 ): void {
   if (json) {
-    writer.info(JSON.stringify(result, null, 2));
+    writer.info(
+      JSON.stringify(
+        { ok: result.ok, command: result.command, summary: result.summary, data: result.data },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  if (result.text !== undefined) {
+    writer.info(result.text);
     return;
   }
 

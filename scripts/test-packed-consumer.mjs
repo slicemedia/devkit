@@ -592,11 +592,32 @@ async function exerciseProject(projectDirectory, manager, selectedAgentTargets) 
   await assertManagerVersion(manager, projectDirectory);
   const [installCommand, installArguments] = managerCommand(manager, "install");
   await run(installCommand, installArguments, { cwd: projectDirectory });
+  // Test-only entries verify installed CLI discovery alongside the configured neutral project.
+  // These fixtures never ship in the creator template or addon packages.
+  await mkdir(join(projectDirectory, "src/addons"), { recursive: true });
+  for (const name of ["fixture-first", "fixture-second"]) {
+    await writeFile(
+      join(projectDirectory, `src/addons/${name}.ts`),
+      `import { CORE_VERSION, installDevKitRuntime } from "@slicemedia/devkit-core";
+const { runtime } = installDevKitRuntime({ version: CORE_VERSION });
+if (!runtime.getAddon("${name}")) runtime.registerAddon({ name: "${name}", version: "0.1.0", value: { getState: () => ({ initialized: true }) } });
+`,
+    );
+  }
   for (const script of ["typecheck", "build"]) {
     const [command, args] = managerCommand(manager, script);
     await run(command, args, { cwd: projectDirectory });
   }
-  await access(join(projectDirectory, "dist/project.js"));
+  await access(join(projectDirectory, "dist/projects/project.js"));
+  await access(join(projectDirectory, "dist/addons/fixture-first.js"));
+  await access(join(projectDirectory, "dist/addons/fixture-second.js"));
+  const buildManifest = JSON.parse(
+    await readFile(join(projectDirectory, "dist/webflow-scripts.json"), "utf8"),
+  );
+  assert(
+    buildManifest.entries.length === 3,
+    "Build did not emit separate addon and project entries.",
+  );
 
   if (selectedAgentTargets.length > 0) {
     const [command, args] = managerCommand(manager, "agents:generate");

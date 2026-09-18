@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -16,8 +17,8 @@ afterEach(async () => {
   );
 });
 
-describe("site bundle builds", () => {
-  it("emits only one ES2018 IIFE and optional CSS", async () => {
+describe("explicit single-entry builds", () => {
+  it("emits one ES2018 IIFE and optional CSS for the selected entry", async () => {
     const root = await temporaryProject();
     await writeFile(
       path.join(root, "src/main.ts"),
@@ -75,6 +76,52 @@ describe("site bundle builds", () => {
     await expect(
       buildSiteBundle({ root, scriptFileName: "../outside.js", build: vi.fn() }),
     ).rejects.toThrow("plain .js file name");
+  });
+
+  it("keeps maps and original sources outside deployable output, paired with the exact bundle", async () => {
+    const root = await temporaryProject();
+    const source =
+      'const authorOnlyComment = "private-map-test"; document.title = authorOnlyComment;\n';
+    await writeFile(path.join(root, "src/main.ts"), source);
+    const result = await buildSiteBundle({ root, sourcemap: true });
+    expect(await readdir(result.outDir)).toEqual(["project.js"]);
+    const script = await readFile(result.scriptPath, "utf8");
+    expect(script).not.toContain("sourceMappingURL");
+    expect(result.sourceMapPaths).toHaveLength(1);
+    const mapPath = result.sourceMapPaths![0]!;
+    expect(mapPath).toContain(createHash("sha256").update(script).digest("hex"));
+    expect(mapPath.startsWith(path.join(root, ".slicemedia/sourcemaps"))).toBe(true);
+    const map = JSON.parse(await readFile(mapPath, "utf8"));
+    expect(map.version).toBe(3);
+    expect(map.mappings.length).toBeGreaterThan(0);
+    expect(map.sourcesContent).toContain(source);
+    expect(await readFile(path.join(root, ".slicemedia/sourcemaps/.gitignore"), "utf8")).toBe(
+      "*\n",
+    );
+    const repeat = await buildSiteBundle({ root, sourcemap: true });
+    expect(repeat.sourceMapPaths).toEqual(result.sourceMapPaths);
+    await buildSiteBundle({ root });
+    expect(await readdir(result.outDir)).toEqual(["project.js"]);
+  });
+
+  it("refuses maps inside deployable output or redirected private storage", async () => {
+    const root = await temporaryProject();
+    await writeFile(path.join(root, "src/main.ts"), "document.title = 'test';\n");
+    const build = vi.fn();
+    await expect(
+      buildSiteBundle({ root, outDir: ".slicemedia", sourcemap: true, build }),
+    ).rejects.toThrow("separate directories");
+    const publicDir = path.join(root, "public");
+    await mkdir(publicDir);
+    await symlink(
+      publicDir,
+      path.join(root, ".slicemedia"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    await expect(buildSiteBundle({ root, sourcemap: true, build })).rejects.toThrow(
+      "symbolic links",
+    );
+    expect(build).not.toHaveBeenCalled();
   });
 });
 

@@ -82,7 +82,7 @@ describe("CLI local and read-only commands", () => {
     }
   });
 
-  it("builds one local project bundle with JSON output", async () => {
+  it("supports an explicit single-entry build with JSON output", async () => {
     const projectRoot = path.resolve(path.sep, "project");
     const output: string[] = [];
     const buildBundle = vi.fn().mockResolvedValue({

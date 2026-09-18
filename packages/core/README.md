@@ -17,6 +17,14 @@ decide what to initialize and bundle. Importing the package never registers a gl
 duplicate-version runtime is available only through an explicit `installDevKitRuntime()`
 call and no standalone global build is shipped.
 
+Opt-in `observeViewportEntryOnce`, `observeElementVisibility`, and `createLayoutRefreshGuard`
+support deferred work, visibility-based animation control, and refreshes after late layout changes.
+An explicitly installed window runtime exposes cancellable `whenReady(name, callback)` subscribers;
+registered APIs are available directly as `window.slicemediaDevKit.counter`, for example.
+Addon instances emit named `init`, `refresh`, and `destroy` completion events alongside
+`status`, `options`, `error`, and authored custom events. The existing `ready` promise still waits
+for its queue. See [runtime helpers](../../docs/runtime-helpers.md).
+
 ## Support and security
 
 See Slice Media's [support policy](https://github.com/slicemedia/.github/blob/main/SUPPORT.md) for

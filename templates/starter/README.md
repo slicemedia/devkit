@@ -11,9 +11,32 @@ starter is deliberately neutral: no optional capability is imported by `src/main
 4. Import only the generated files under `src/integrations/` that the project is ready to compose.
 5. Run `pnpm typecheck` and `pnpm build`.
 
-The build emits one project-owned ES2018 IIFE at `dist/project.js` and, when styles are imported,
-`dist/project.css`. `pnpm catalog -- --json` inspects the single project entry. Use
+Create each public browser entry in `src/addons/<name>.ts` or `src/addons/<name>/index.ts`.
+The build emits separate standalone ES2018 scripts at `dist/addons/<name>.js` and optional
+`dist/addons/<name>.css`. Shared helpers belong outside these entry paths or in `_`-prefixed files.
+New addons are discovered automatically alongside entries configured in `devkit.config.json`.
+`pnpm catalog -- --json` inspects all public entries. Use
 `pnpm devkit -- <command>` for other DevKit commands.
+
+Run `pnpm devkit -- explain <name>` for an addon's Webflow setup guide and local testing tags. Add
+`--public-base-url` with the deployed asset base URL for production JS/CSS tags. Load only the
+scripts needed on each page. The optional neutral `src/main.ts` entry builds separately to
+`dist/projects/project.js` and optional CSS; remove its config entry if no shared project script
+is needed. It does not import or collect addon entries.
+
+Each addon entry explicitly initializes its behavior and registers its API with the shared
+DevKit runtime. Inline scripts can then use `window.slicemediaDevKit.counter.refresh()` or
+`window.slicemediaDevKit.whenReady("counter", callback)`. Keep package definitions inert; put
+browser initialization in the public entry. The build also writes `dist/webflow-scripts.json`
+with the actual script and stylesheet paths.
+
+`pnpm build -- --sourcemap` generates private JavaScript maps in `.slicemedia/sourcemaps/`, outside
+`dist/`. Deploy only `dist/`; keep debugging artifacts private. The production bundle contains no
+map references. Browser JavaScript itself remains publicly inspectable.
+
+The repository documentation includes an optional worked example at
+[`docs/examples/on-demand-counter`](https://github.com/slicemedia/devkit/tree/main/docs/examples/on-demand-counter).
+Example features are not copied into generated projects.
 
 The project-owned `WEBFLOW_PROJECT.md` is always present. If agent targets were selected, run
 `pnpm agents:generate` after installation. Slice Media Agent Kit preserves that guide and creates

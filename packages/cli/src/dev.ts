@@ -15,6 +15,18 @@ export async function startDevServer(options: DevServerOptions): Promise<ViteDev
       port: options.port ?? 5173,
       strictPort: true,
       cors: true,
+      fs: {
+        // Preserve Vite's sensitive-file defaults and keep private build maps off the dev server.
+        deny: [
+          ".env",
+          ".env.*",
+          "*.{crt,pem,key,p12,pfx,cer,der}",
+          ".npmrc",
+          ".yarnrc.yml",
+          "**/.git/**",
+          "**/.slicemedia/sourcemaps/**",
+        ],
+      },
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "no-store",

@@ -3,7 +3,7 @@ export interface ParsedArgs {
   readonly options: ReadonlyMap<string, readonly string[]>;
 }
 
-const booleanOptions = new Set(["git-history", "help", "json", "yes"]);
+const booleanOptions = new Set(["git-history", "help", "json", "yes", "sourcemap", "hmr"]);
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   const positionals: string[] = [];

@@ -173,6 +173,7 @@ describe("scaffoldProject", () => {
     });
     expect(packageJson.devDependencies).not.toHaveProperty("@slicemedia/agent-kit");
     expect(packageJson.scripts).not.toHaveProperty("agents:generate");
+    expect(packageJson.scripts.build).toBe("slicemedia-devkit build");
     await expect(readFile(join(targetDirectory, "WEBFLOW_PROJECT.md"), "utf8")).resolves.toContain(
       "Webflow project guidance",
     );

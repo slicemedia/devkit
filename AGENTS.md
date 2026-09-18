@@ -6,7 +6,7 @@ This workspace contains Slice Media DevKit, AI-first development infrastructure 
 
 - Prefer Webflow-native layout, components, CMS, forms, variables, and interactions. Add browser code only where Webflow does not provide the required behavior.
 - Use neutral `data-wft-*` hooks. Never introduce client names, assets, URLs, site IDs, component IDs, credentials, copied production markup, or project fallback selectors.
-- Keep package ESM imports side-effect-free. A consumer's `src/main.ts` is the only composition entry and builds into one site-owned IIFE.
+- Keep package ESM imports side-effect-free. Consumer-owned entries under `src/addons/` build into separate standalone IIFEs at `dist/addons/<name>.js`, with optional per-addon CSS. Optional project entries compose only deliberately selected behavior; never force every addon into one site bundle.
 - Make lifecycle initialization idempotent and destruction complete. Preserve DOM, attributes, accessibility state, and remote data that the code does not own.
 - Treat inspection, planning, confirmation, application, read-back, and verification as separate phases. Webflow writes, deletion, and publishing require an explicit user request and the matching MCP skill.
 - Keep the DevKit CLI local or read-only. Agent Kit, Swiper Adapter, and Spaces Deployer are independent products and must remain optional.

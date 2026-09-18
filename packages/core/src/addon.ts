@@ -115,6 +115,15 @@ export function defineAddon<
     placement: input.placement ?? "body-end",
     entry: input.entry,
     lifecycle: Object.freeze(lifecycle),
+    ...(input.usage
+      ? {
+          usage: Object.freeze({
+            ...input.usage,
+            setup: Object.freeze([...input.usage.setup]),
+            ...(input.usage.notes ? { notes: Object.freeze([...input.usage.notes]) } : {}),
+          }),
+        }
+      : {}),
     setup: input.setup,
   });
 }
@@ -134,6 +143,7 @@ export function getAddonMetadata<Options extends object>(
     placement: definition.placement,
     entry: definition.entry,
     lifecycle: definition.lifecycle,
+    ...(definition.usage ? { usage: definition.usage } : {}),
   });
 }
 
@@ -205,6 +215,7 @@ class AddonInstanceImplementation<
       try {
         await this.hooks?.refresh?.();
         this.setStatus("ready");
+        this.emitCore("refresh", { status: this.currentStatus });
       } catch (error) {
         this.setStatus("error");
         this.emitCore("error", { operation: "refresh", error });
@@ -218,6 +229,7 @@ class AddonInstanceImplementation<
       if (this.currentStatus === "destroyed") return;
       if (this.currentStatus === "idle") {
         this.setStatus("destroyed");
+        this.emitCore("destroy", { status: this.currentStatus });
         return;
       }
 
@@ -232,6 +244,7 @@ class AddonInstanceImplementation<
         this.emitCore("error", { operation: "destroy", error });
         throw error;
       }
+      this.emitCore("destroy", { status: this.currentStatus });
     });
   }
 
@@ -295,6 +308,7 @@ class AddonInstanceImplementation<
       this.hooks = await this.definition.setup(context);
       await this.hooks.init?.();
       this.setStatus("ready");
+      this.emitCore("init", { status: this.currentStatus });
     } catch (initializationError) {
       const teardownErrors = await this.teardown(true);
       this.setStatus("error");
@@ -377,10 +391,9 @@ class AddonInstanceImplementation<
     this.emitCore("status", { previous, current: status });
   }
 
-  private emitCore<EventName extends "status" | "error" | "options">(
-    event: EventName,
-    payload: AddonInstanceEventMap<Options, object>[EventName],
-  ): void {
+  private emitCore<
+    EventName extends "status" | "error" | "options" | "init" | "refresh" | "destroy",
+  >(event: EventName, payload: AddonInstanceEventMap<Options, object>[EventName]): void {
     this.emitter.emit(event, payload);
   }
 }
