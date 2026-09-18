@@ -7,6 +7,12 @@ on:
         description: Full 40-character main commit to publish
         required: true
         type: string
+      release_target:
+        description: Package family to publish independently
+        required: true
+        default: devkit
+        type: choice
+        options: [devkit, devtools]
 
 permissions: {}
 
@@ -30,6 +36,7 @@ jobs:
         shell: bash
         env:
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
         run: |
           set -euo pipefail
           if [[ ! "$SLICEMEDIA_RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
@@ -148,13 +155,14 @@ jobs:
       - run: pnpm release:archive
         env:
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
       - name: Sanitize source, history, generated files, and release archives
         run: pnpm sanitize -- --json
         env:
           SLICEMEDIA_FORBIDDEN_TERMS: ${{ secrets.SLICEMEDIA_FORBIDDEN_TERMS }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
+          name: ${{ inputs.release_target }}-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
           path: .npm-release
           if-no-files-found: error
           include-hidden-files: true
@@ -178,6 +186,7 @@ jobs:
         shell: bash
         env:
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
         run: |
           set -euo pipefail
           if [[ ! "$SLICEMEDIA_RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
@@ -260,18 +269,20 @@ jobs:
       - run: test "$(npm --version)" = "11.19.0"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
+          name: ${{ inputs.release_target }}-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
           path: .npm-release
       - run: node scripts/assert-npm-publication-artifact.mjs
         env:
           GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
           SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED: ${{ vars.SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED }}
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
           SLICEMEDIA_RELEASE_ENVIRONMENT: npm-next
       - name: Verify current main immediately before publication
         shell: bash
         env:
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
         run: |
           set -euo pipefail
           test "$SLICEMEDIA_RELEASE_COMMIT" = "$GITHUB_SHA"
@@ -284,6 +295,7 @@ jobs:
           GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
           SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED: ${{ vars.SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED }}
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
           SLICEMEDIA_RELEASE_ENVIRONMENT: npm-next
 
   verify:
@@ -304,6 +316,7 @@ jobs:
         shell: bash
         env:
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}
         run: |
           set -euo pipefail
           test "$SLICEMEDIA_RELEASE_COMMIT" = "$GITHUB_SHA"
@@ -315,9 +328,10 @@ jobs:
           check-latest: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
+          name: ${{ inputs.release_target }}-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}
           path: .npm-release
       - run: node scripts/verify-npm-publication.mjs
         env:
           GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
           SLICEMEDIA_RELEASE_COMMIT: ${{ inputs.release_commit }}
+          SLICEMEDIA_RELEASE_TARGET: ${{ inputs.release_target }}

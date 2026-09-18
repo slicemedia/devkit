@@ -1,6 +1,6 @@
 {
   "name": "@slicemedia/devkit-cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "description": "Build local project bundles and inspect Webflow state with Slice Media DevKit.",
   "author": "Slice Media",

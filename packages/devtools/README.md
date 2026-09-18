@@ -13,12 +13,12 @@ alongside the other addon scripts. Projects that skip the option do not install 
 
 ## Add to an existing project
 
-Once the package has been published, install a compatible version with your package manager:
+Install the preview release with your package manager:
 
 ```sh
-pnpm add @slicemedia/devtools
-# or: npm install @slicemedia/devtools
-# or: yarn add @slicemedia/devtools
+pnpm add @slicemedia/devtools@next
+# or: npm install @slicemedia/devtools@next
+# or: yarn add @slicemedia/devtools@next
 ```
 
 Create `src/addons/devtools.ts`:
@@ -108,10 +108,17 @@ pnpm --filter @slicemedia/devtools test
 pnpm --filter @slicemedia/devtools pack --out artifacts/devtools.tgz
 ```
 
-The archive includes ESM, types, the browser script, license, changelog, and these docs. The existing
-five-package DevKit publication workflow does not publish this independent package. Publishing its
-archive requires its own npm package authorization/release setup; uploading the browser script to
-project hosting remains a separate deployment step. Neither is performed by the build.
+The archive includes ESM, types, the browser script, license, changelog, and these docs. The
+**Publish npm prerelease** workflow publishes this package separately when `release_target` is
+`devtools`; the default `devkit` target publishes only the five DevKit packages. Both targets use
+the protected `npm-next` environment, npm trusted publishing, provenance, and archive read-back.
+DevTools requires its own npm trusted-publisher registration for this workflow. The workflow
+checks that the compatible core release, including its inspection exports, is already on npm.
+See the repository's [release process](../../docs/release-process.md).
+
+Releases use the `next` tag until the public-readiness review. Pin an actual version in production
+CDN links. Uploading the browser script to project hosting remains a separate deployment step;
+neither publication nor deployment is performed by the build.
 
 Licensed under MIT. Slice Media DevTools is independently developed by Slice Media and is not
 affiliated with, endorsed by, or sponsored by Webflow, Inc. The embedded Lucide icon license is
