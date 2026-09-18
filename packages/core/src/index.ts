@@ -6,6 +6,8 @@ export {
   getAddonMetadata,
 } from "./addon.js";
 export { AssetLoadError, loadAssetOnce } from "./assets.js";
+export { loadSharedModule, registerSharedModule, resolveVendorAsset } from "./shared-module.js";
+export type { LoadSharedModuleOptions } from "./shared-module.js";
 export {
   WEBFLOW_BREAKPOINTS,
   createBreakpointService,
@@ -88,4 +90,9 @@ export type {
 } from "./types.js";
 export type { ViewportObserverOptions, ViewportSnapshot } from "./viewport.js";
 export type { ElementVisibility, ElementVisibilityOptions } from "./visibility.js";
-export type { LayoutRefreshGuard, LayoutRefreshOptions } from "./layout-refresh.js";
+export type {
+  LayoutRefreshGuard,
+  LayoutRefreshOptions,
+  LayoutRefreshDiagnostic,
+  LayoutRefreshState,
+} from "./layout-refresh.js";

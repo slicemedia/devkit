@@ -1,5 +1,14 @@
 # @slicemedia/devkit
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [56d2ae0]
+- Updated dependencies [885dbac]
+  - @slicemedia/devkit-core@0.5.0
+  - @slicemedia/devkit-addon@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

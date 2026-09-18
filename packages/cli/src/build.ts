@@ -12,6 +12,8 @@ export interface BuildSiteBundleOptions {
   readonly outDir?: string;
   readonly scriptFileName?: string;
   readonly cssFileName?: string;
+  /** Relative URL from this output's directory to the shared vendor directory. */
+  readonly vendorDirectory?: string;
   /** Generate private JavaScript maps outside the deployable output directory. */
   readonly sourcemap?: boolean;
   /** Multi-entry builds clear their shared output once before invoking individual builds. */
@@ -57,6 +59,7 @@ export async function buildSiteBundle(
       outDir,
       scriptFileName,
       cssFileName,
+      vendorDirectory: options.vendorDirectory ?? "./vendor/",
       privateMaps,
       emptyOutDir: options.emptyOutDir ?? true,
     }),
@@ -81,6 +84,7 @@ interface BuildConfigInput {
   readonly outDir: string;
   readonly scriptFileName: string;
   readonly cssFileName: string;
+  readonly vendorDirectory: string;
   readonly privateMaps: Plugin | undefined;
   readonly emptyOutDir: boolean;
 }
@@ -91,6 +95,12 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
     configFile: false,
     publicDir: false,
     logLevel: "silent",
+    // IIFEs have no native import.meta.url. Capture the executing entry URL once so asynchronous
+    // loaders resolve vendor files from the CDN, never from the Webflow page URL.
+    define: {
+      "import.meta.url": "__slicemediaEntryUrl",
+      __SLICEMEDIA_VENDOR_DIRECTORY__: JSON.stringify(input.vendorDirectory),
+    },
     plugins: input.privateMaps ? [input.privateMaps] : [],
     build: {
       target: "es2018",
@@ -105,6 +115,8 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
         input: input.entryPath,
         output: {
           format: "iife",
+          intro:
+            'const __slicemediaEntryUrl = typeof document === "undefined" ? "" : (document.currentScript ? document.currentScript.src : "");',
           comments: { legal: true, annotation: false, jsdoc: false },
           entryFileNames: input.scriptFileName,
           assetFileNames: (asset) =>

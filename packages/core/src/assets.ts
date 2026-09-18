@@ -12,6 +12,8 @@ export interface LoadAssetOptions {
   readonly timeoutMs?: number;
   readonly scriptAsync?: boolean;
   readonly removeOnError?: boolean;
+  /** Confirms readiness of an existing script whose load event may have already fired. */
+  readonly isReady?: () => boolean;
 }
 
 export type LoadedAssetElement = HTMLScriptElement | HTMLLinkElement;
@@ -21,7 +23,10 @@ interface AssetCacheEntry {
   readonly promise: Promise<LoadedAssetElement>;
 }
 
-const assetCaches = new WeakMap<Document, Map<string, AssetCacheEntry>>();
+// A module-local WeakMap is duplicated by standalone IIFEs. Install lazily on the document so
+// every addon shares pending loads and key/security checks without requiring the global runtime.
+const ASSET_CACHE = Symbol.for("slicemedia.devkit.assets.v1");
+type AssetDocument = Document & { [ASSET_CACHE]?: Map<string, AssetCacheEntry> };
 
 const PROTECTED_ATTRIBUTES = new Set([
   "src",
@@ -46,10 +51,11 @@ export class AssetLoadError extends Error {
 }
 
 function getCache(targetDocument: Document): Map<string, AssetCacheEntry> {
-  let cache = assetCaches.get(targetDocument);
+  const host = targetDocument as AssetDocument;
+  let cache = host[ASSET_CACHE];
   if (!cache) {
     cache = new Map();
-    assetCaches.set(targetDocument, cache);
+    Object.defineProperty(host, ASSET_CACHE, { value: cache });
   }
   return cache;
 }
@@ -139,7 +145,8 @@ function hasLoaded(element: LoadedAssetElement): boolean {
       return false;
     }
   }
-  return element.dataset.wftAssetState !== "loading";
+  // The presence of a script tag says nothing about whether its code has executed.
+  return false;
 }
 
 /**
@@ -161,7 +168,12 @@ export function loadAssetOnce(options: LoadAssetOptions): Promise<LoadedAssetEle
     return Promise.reject(error);
   }
 
-  const canonicalUrl = canonicalizeUrl(options.url, targetDocument);
+  let canonicalUrl: string;
+  try {
+    canonicalUrl = canonicalizeUrl(options.url, targetDocument);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const key = options.key ?? `${options.type}:${canonicalUrl}`;
   const fingerprint = createFingerprint(options, canonicalUrl);
   const cache = getCache(targetDocument);
@@ -195,7 +207,7 @@ export function loadAssetOnce(options: LoadAssetOptions): Promise<LoadedAssetEle
   element.dataset.wftAsset = key;
 
   const promise = new Promise<LoadedAssetElement>((resolve, reject) => {
-    if (existing && hasLoaded(existing)) {
+    if (existing && (hasLoaded(existing) || options.isReady?.())) {
       element.dataset.wftAssetState = "loaded";
       resolve(element);
       return;

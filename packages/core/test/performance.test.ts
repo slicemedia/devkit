@@ -108,7 +108,12 @@ describe("layout refresh guard", () => {
     const root = document.createElement("section");
     document.body.append(root);
     const refresh = vi.fn(() => root.append(document.createElement("div")));
-    const guard = createLayoutRefreshGuard(refresh, { root, observeFonts: false, debounceMs: 30 });
+    const guard = createLayoutRefreshGuard(refresh, {
+      root,
+      observeFonts: false,
+      debounceMs: 30,
+      refreshOnWindowLoad: false,
+    });
     const image = document.createElement("img");
     root.append(image);
     image.dispatchEvent(new Event("load"));
@@ -141,6 +146,7 @@ describe("layout refresh guard", () => {
     const guard = createLayoutRefreshGuard(refresh, {
       signal: abort.signal,
       observeMutations: false,
+      refreshOnWindowLoad: false,
     });
     ready();
     await vi.advanceTimersByTimeAsync(80);
@@ -151,5 +157,74 @@ describe("layout refresh guard", () => {
     expect(refresh).toHaveBeenCalledOnce();
     guard.destroy();
     Reflect.deleteProperty(document, "fonts");
+  });
+
+  it.each(["loading", "complete"] as const)(
+    "runs settling passes for %s documents and exposes refresh diagnostics",
+    async (readyState) => {
+      vi.useFakeTimers();
+      vi.spyOn(document, "readyState", "get").mockReturnValue(readyState);
+      const diagnostic = vi.fn();
+      const refresh = vi
+        .fn<() => boolean | void>()
+        .mockReturnValueOnce(false)
+        .mockImplementationOnce(() => {
+          throw new Error("Refresh failed");
+        });
+      const guard = createLayoutRefreshGuard(refresh, {
+        observeFonts: false,
+        observeImages: false,
+        observeMutations: false,
+        debounceMs: 10,
+        onRefresh: diagnostic,
+      });
+      if (readyState === "loading") {
+        await vi.advanceTimersByTimeAsync(20);
+        expect(refresh).not.toHaveBeenCalled();
+        window.dispatchEvent(new Event("load"));
+      }
+      await vi.advanceTimersByTimeAsync(10);
+      expect(guard.getState()).toMatchObject({
+        skippedCount: 1,
+        pendingLoadPasses: 3,
+        lastRefresh: { status: "skipped", reasons: ["window-load"] },
+      });
+      await vi.advanceTimersByTimeAsync(300);
+      expect(guard.getState()).toMatchObject({
+        errorCount: 1,
+        lastRefresh: { status: "error", reasons: ["window-load+300ms"] },
+      });
+      await vi.advanceTimersByTimeAsync(700);
+      expect(guard.getState().refreshCount).toBe(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(guard.getState().refreshCount).toBe(2);
+      expect(diagnostic).toHaveBeenCalledTimes(4);
+      guard.destroy();
+    },
+  );
+
+  it("coalesces reasons and cancels every load timer on abort", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(document, "readyState", "get").mockReturnValue("complete");
+    const abort = new AbortController();
+    const refresh = vi.fn();
+    const guard = createLayoutRefreshGuard(refresh, {
+      signal: abort.signal,
+      observeFonts: false,
+      observeImages: false,
+    });
+    guard.schedule("cms");
+    guard.schedule("slider");
+    await vi.advanceTimersByTimeAsync(80);
+    expect(guard.getState().lastRefresh?.reasons).toEqual(["window-load", "cms", "slider"]);
+    abort.abort();
+    await vi.advanceTimersByTimeAsync(3000);
+    guard.refreshNow();
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(guard.getState()).toMatchObject({
+      active: false,
+      pendingLoadPasses: 0,
+      pendingReasons: [],
+    });
   });
 });

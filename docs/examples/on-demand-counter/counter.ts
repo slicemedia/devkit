@@ -40,7 +40,7 @@ export const counterDefinition = defineAddon<CounterOptions, { instances: number
     setup: [
       "Create an accessible Webflow text wrapper containing the final number.",
       "Add data-wft-counter and data-wft-counter-to to its decorative number span.",
-      "Compose createCounter in src/addons/counter.ts, then initialize and register its public API.",
+      "Compose createCounter in src/addons/counter.entry.ts, then initialize and register its public API.",
     ],
     markup:
       '<p aria-label="250 projects completed"><span aria-hidden="true" data-wft-counter data-wft-counter-to="250">250</span> projects completed</p>',

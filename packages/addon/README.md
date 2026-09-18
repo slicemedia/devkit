@@ -4,7 +4,7 @@ Side-effect-free primitives for authoring a Webflow enhancement with the shared 
 The root package re-exports the addon contract from `@slicemedia/devkit-core`; importing it never
 queries the DOM or starts an addon.
 
-Install the `0.1.0` release candidate through the npm `next` tag:
+Install the current release candidate through the npm `next` tag:
 
 ```sh
 npm install @slicemedia/devkit-addon@next

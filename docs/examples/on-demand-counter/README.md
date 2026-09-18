@@ -2,12 +2,13 @@
 
 This worked example lives only in repository documentation. It is not a package export, starter
 feature, or member of the addon library. Copy it deliberately into a disposable generated project
-when learning the workflow. Use native Webflow behavior when it already meets the requirement.
+when learning the workflow. This small dependency-free counter illustrates the lifecycle; prefer
+GSAP addons for richer custom motion and follow the user's chosen approach.
 
 ## 1. Prepare a project and its Webflow contract
 
 Create a neutral DevKit project and install its dependencies. Copy `counter.ts` into the project's
-`src/` and `addons/counter.ts` into `src/addons/counter.ts`; copy `devkit.config.json` to its root. The included
+`src/` and `addons/counter.entry.ts` into `src/addons/counter.entry.ts`; copy `devkit.config.json` to its root. The included
 `tsconfig.json` checks this example inside the DevKit repository; keep the generated project's own
 TypeScript configuration when copying the example.
 
@@ -36,7 +37,7 @@ pnpm devkit -- explain counter
 ```
 
 Use the development snippet only on an approved Webflow testing page. It contains Vite's HMR client
-and the standalone `src/addons/counter.ts` entry. Importing the counter definition alone does not initialize it.
+and the standalone `src/addons/counter.entry.ts` entry. Importing the counter definition alone does not initialize it.
 Local HTML is only a smoke test; verify the actual rendered Webflow page too.
 
 Check multiple counters, desktop/mobile widths, scrolling away and back, background tabs, reduced
@@ -45,6 +46,18 @@ The example uses whole-number interpolation; localization and richer number form
 the consuming project.
 
 ## 3. Call the public API from a small Webflow script
+
+Before the addon tag, an optional inline config changes its duration without editing the bundle:
+
+```html
+<script>
+  window.slicemediaDevKit = window.slicemediaDevKit || { queue: [] };
+  window.slicemediaDevKit.config = { counter: { duration: 1800 } };
+</script>
+```
+
+The browser entry validates this setting and passes it to the counter factory; omitted values use
+the default. After initialization, change a running counter with `counter.setOptions()` instead.
 
 This works before or after the project script loads:
 

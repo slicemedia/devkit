@@ -77,6 +77,7 @@ interface CapabilityDefinition {
   environmentVariables?: readonly string[];
   integrationFile: string;
   renderIntegration(): string;
+  renderVendor?(): string;
 }
 
 const packageManagerMetadata: Record<PackageManager, string> = {
@@ -150,55 +151,96 @@ hot?.dispose(() => devtools.destroy());
       swiper: "^14.1.0",
     }),
     integrationFile: "src/integrations/slider.ts",
-    renderIntegration: () => `import {
-  createResponsiveSwiper,
-  type ResponsiveSwiperController,
-  type ResponsiveSwiperOptions,
-} from "@slicemedia/swiper-adapter";
-import "swiper/css";
+    renderIntegration:
+      () => `import { loadSharedModule, resolveVendorAsset } from "@slicemedia/devkit-core";
+import type { ResponsiveSwiperController, ResponsiveSwiperOptions } from "@slicemedia/swiper-adapter";
 
+type SliderModule = Pick<typeof import("@slicemedia/swiper-adapter"), "createResponsiveSwiper">;
+const moduleUrl = import.meta.url;
 export const PROJECT_SLIDER_SELECTOR = "[data-wft-slider]" as const;
-
 export type ProjectSliderOptions = Omit<ResponsiveSwiperOptions, "target"> & {
   target?: ResponsiveSwiperOptions["target"];
+  vendorBaseUrl?: string;
 };
 
-export function createProjectSlider(
+/** Call after the slider approaches the viewport when deferred initialization is desired. */
+export async function createProjectSlider(
   options: ProjectSliderOptions = {},
-): ResponsiveSwiperController {
-  const { target = PROJECT_SLIDER_SELECTOR, ...swiperOptions } = options;
-  return createResponsiveSwiper({
-    target,
-    observeMutations: true,
-    ...swiperOptions,
+): Promise<ResponsiveSwiperController | undefined> {
+  const { target = PROJECT_SLIDER_SELECTOR, vendorBaseUrl, ...swiperOptions } = options;
+  const targetDocument = options.document ?? document;
+  if (typeof target === "string" && !targetDocument.querySelector(target)) return undefined;
+  const { createResponsiveSwiper } = await loadSharedModule<SliderModule>({
+    url: resolveVendorAsset("slider.js", moduleUrl, vendorBaseUrl),
+    document: targetDocument,
+    styles: [{ url: resolveVendorAsset("slider.css", moduleUrl, vendorBaseUrl) }],
   });
+  return createResponsiveSwiper({ target, observeMutations: true, ...swiperOptions });
 }
+`,
+    renderVendor: () => `import { registerSharedModule } from "@slicemedia/devkit-core";
+import { createResponsiveSwiper } from "@slicemedia/swiper-adapter";
+import "swiper/css";
+
+registerSharedModule({ createResponsiveSwiper });
 `,
   },
   animations: {
     dependencies: () => ({ gsap: "^3.13.0" }),
     integrationFile: "src/integrations/animations.ts",
-    renderIntegration: () => `import { gsap } from "gsap";
+    renderIntegration:
+      () => `import { loadSharedModule, resolveVendorAsset } from "@slicemedia/devkit-core";
 
-/** Project-owned GSAP integration. Import only from the addon/project entry that needs it. */
-export { gsap };
+type AnimationModule = {
+  gsap: typeof import("gsap").gsap;
+  ScrollTrigger: typeof import("gsap/ScrollTrigger").ScrollTrigger;
+};
+const moduleUrl = import.meta.url;
+
+/** Invoke only when matching markup needs animation; all addon entries share this vendor. */
+export function loadProjectAnimations(vendorBaseUrl?: string): Promise<AnimationModule> {
+  return loadSharedModule<AnimationModule>({
+    url: resolveVendorAsset("animations.js", moduleUrl, vendorBaseUrl),
+  });
+}
+`,
+    renderVendor: () => `import { registerSharedModule } from "@slicemedia/devkit-core";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
+registerSharedModule({ gsap, ScrollTrigger });
 `,
   },
   tooltips: {
     dependencies: () => ({ "tippy.js": "^6.3.7" }),
     integrationFile: "src/integrations/tooltips.ts",
     renderIntegration:
-      () => `import tippy, { type Instance, type MultipleTargets, type Props } from "tippy.js";
-import "tippy.js/dist/tippy.css";
+      () => `import { loadSharedModule, resolveVendorAsset } from "@slicemedia/devkit-core";
+import type { Instance, MultipleTargets, Props } from "tippy.js";
 
+type TooltipModule = { tippy: typeof import("tippy.js").default };
+const moduleUrl = import.meta.url;
 export const PROJECT_TOOLTIP_SELECTOR = "[data-wft-tooltip]" as const;
 
-export function createProjectTooltips(
+export async function createProjectTooltips(
   targets: MultipleTargets = PROJECT_TOOLTIP_SELECTOR,
   options: Partial<Props> = {},
-): Instance[] {
+  vendorBaseUrl?: string,
+): Promise<Instance[]> {
+  if (typeof targets === "string" && !document.querySelector(targets)) return [];
+  const { tippy } = await loadSharedModule<TooltipModule>({
+    url: resolveVendorAsset("tooltips.js", moduleUrl, vendorBaseUrl),
+    styles: [{ url: resolveVendorAsset("tooltips.css", moduleUrl, vendorBaseUrl) }],
+  });
   return tippy(targets, options);
 }
+`,
+    renderVendor: () => `import { registerSharedModule } from "@slicemedia/devkit-core";
+import tippy from "tippy.js";
+import "tippy.js/dist/tippy.css";
+
+registerSharedModule({ tippy });
 `,
   },
   "digitalocean-spaces": {
@@ -227,6 +269,7 @@ export interface ProjectSpacesPlanConfig {
   prefix: string;
   releaseVersion: string;
   cdnEndpointId: string;
+  acl?: "public-read";
 }
 
 /** Stable URLs with scoped CDN invalidation; all account and project values are explicit. */
@@ -510,6 +553,11 @@ async function writeIntegrations(
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, definition.renderIntegration(), { flag: "wx" });
     files.push(definition.integrationFile);
+    if (definition.renderVendor) {
+      const vendorPath = join(target, "src", "vendors", `${capability}.ts`);
+      await mkdir(dirname(vendorPath), { recursive: true });
+      await writeFile(vendorPath, definition.renderVendor(), { flag: "wx" });
+    }
   }
   return files;
 }
@@ -521,11 +569,16 @@ async function configureDevKitEntry(
   const configPath = join(target, "devkit.config.json");
   const config = JSON.parse(await readFile(configPath, "utf8")) as {
     entries?: Array<Record<string, unknown> & { api?: Record<string, unknown> }>;
+    vendors?: Array<{ name: string; input: string }>;
   };
   if (config.entries?.length !== 1 || config.entries[0] === undefined) {
     throw new Error("Starter devkit.config.json must declare exactly one project entry.");
   }
   config.entries[0].api = { ...config.entries[0].api, capabilities };
+  const vendors = capabilities
+    .filter((capability) => capabilityDefinitions[capability].renderVendor)
+    .map((name) => ({ name, input: `src/vendors/${name}.ts` }));
+  if (vendors.length) config.vendors = vendors;
   if (capabilities.includes("devtools"))
     config.entries.push({
       name: "devtools",

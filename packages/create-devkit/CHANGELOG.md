@@ -1,5 +1,15 @@
 # @slicemedia/create-devkit
 
+## 0.5.0
+
+### Minor Changes
+
+- 885dbac: Share on-demand vendor JavaScript and CSS across standalone addon bundles, with declared vendor builds and asynchronous generated integrations. Restore window-load settling and refresh diagnostics; fix pending asset readiness, cross-bundle caching, stale breakpoint subscriptions, mobile viewport lengths, build-accurate CSS guides, and explicit local-development origins. Align slider and deployment documentation with Swiper defaults and the complete deployable artifact tree.
+
+### Patch Changes
+
+- 56d2ae0: Discover marked browser entries recursively and preserve their folder paths in standalone JavaScript, CSS, manifests, and setup guides. Calculate shared vendor URLs for each output depth and for local development. Retain legacy entry conventions and document the entry marker, naming, and deployment rules in generated projects.
+
 ## 0.4.0
 
 ### Minor Changes

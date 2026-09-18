@@ -28,18 +28,28 @@ convenience package depends on DevTools. The wizard adds it only when selected.
 
 DevKit package imports are ESM and side-effect-free. Consumer browser entries explicitly initialize
 and register their selected behavior. Each public addon under `src/addons/` builds into its own
-standalone ES2018 IIFE at `dist/addons/<name>.js`, with `dist/addons/<name>.css` when needed.
-Shared imports are bundled into each script so a Webflow page can load any addon independently.
-No separate shared runtime script or universal site bundle is required. All entries on a page reuse
+standalone ES2018 IIFE under `dist/addons/`, with adjacent CSS when needed. New entries use
+`*.entry.ts` / `*.entry.js` (also TSX/MJS) at any folder depth. The build preserves category paths
+and removes `.entry` from the public filename; unmarked nested helpers are imported by entries.
+The earlier flat-file and one-folder `index.ts` conventions retain their existing output paths.
+Heavy libraries live in explicitly declared project-owned vendor entries and build once under
+`dist/vendor/`. Addons use asynchronous integration loaders to share vendor JS and CSS on demand.
+Small runtime helpers remain bundled with each addon. No universal site bundle or manually loaded
+runtime script is required. See [shared dependencies](shared-dependencies.md). All entries on a page reuse
 the version-checked `window.slicemediaDevKit` runtime when explicitly installed, exposing named APIs
 such as `window.slicemediaDevKit.counter` and readiness callbacks through `whenReady()`.
 
-Optional entries under `src/projects/` build to `dist/projects/<name>.js`; they compose only the
+Optional entries under `src/projects/` build under `dist/projects/` with the same nesting rules; they compose only the
 behavior deliberately selected for that entry. The starter's `src/main.ts` is an explicitly
 configured neutral project entry, not a collector of addons. The default build discovers new addons
 even when project entries are configured. The build clears output once, emits each script and its
-optional CSS independently, then writes an artifact manifest. Production sourcemaps remain outside
+optional CSS independently, builds declared shared vendors, then writes an artifact manifest with
+separate entry and vendor lists. Production sourcemaps remain outside
 the deployable tree. See [standalone builds](standalone-builds.md) for conventions and migration.
+
+Vendor resolution uses the actual output path computed during the build, so nested addons share
+the same vendor files without per-addon URL overrides. Deployment uploads the full output tree
+without flattening; generated setup guides use the same paths recorded in the manifest.
 
 Agent Kit, Swiper Adapter, and Spaces Deployer
 are maintained in independent repositories and versions; DevKit references them only when selected.
@@ -51,6 +61,10 @@ lifecycle. Explicit user choices take precedence; simple CSS effects and straigh
 Designer-owned Interactions remain suitable alternatives. Selecting GSAP does not depend on
 native Interactions being unable to reproduce the effect. See
 [animation authoring](animation-authoring.md).
+
+Swiper is the default slider implementation, with the optional Swiper Adapter for lifecycle and CMS
+support. Honor an explicit user choice of native Webflow sliders or another implementation.
+Preserve existing ownership unless migration is requested.
 
 The official Webflow MCP server handles explicitly requested remote inspection and changes; the
 DevKit CLI remains local or read-only.

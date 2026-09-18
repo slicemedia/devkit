@@ -61,16 +61,21 @@ await addon.init();
 ```
 
 ```ts
-// Optional Slice Media Swiper Adapter, maintained as an independent product.
-import { createResponsiveSwiper } from "@slicemedia/swiper-adapter";
-import "swiper/css";
+// In a project created with the slider capability, after matching markup needs it:
+import { createProjectSlider } from "./src/integrations/slider";
 
-createResponsiveSwiper({ target: "[data-wft-slider]", observeMutations: true }).init();
+const slider = await createProjectSlider({ target: "[data-wft-slider]" });
+slider?.init(); // Own and destroy this controller in the addon lifecycle.
 ```
 
 In a generated project, use the selected manager's `dev` script for the CORS-enabled local server
-and its `build` script for separate files at `dist/addons/<name>.js`. Load only the addon scripts
-needed on each Webflow page. Optional project scripts are separate outputs. Hosting stays project-owned. Teams choosing
+and its `build` script for separate files under `dist/addons/`. New `.entry.ts` / `.entry.js` files
+are discovered recursively under `src/addons/`; category folders are preserved in output URLs.
+Legacy entry formats remain supported. See [entry conventions](docs/standalone-builds.md). Load only the addon scripts
+needed on each Webflow page. Selected heavy dependencies build once under `dist/vendor/` and load
+on demand across addons; optional project scripts remain separate. Deploy all of `dist/`, including
+vendor JS/CSS. See [shared dependencies](docs/shared-dependencies.md) and [deployment](docs/deployment.md).
+Prefer Swiper for sliders unless the user explicitly chooses native Webflow or another implementation. Hosting stays project-owned. Teams choosing
 DigitalOcean Spaces can install the independent `@slicemedia/spaces-deployer` package and use its
 reviewed plan/apply workflow. The generated Spaces integration requires Spaces Deployer 0.2 or
 newer and selects stable URLs with scoped CDN invalidation. Supply a dedicated project prefix,
@@ -90,7 +95,7 @@ release URLs remain available through the deployer's explicit `immutable` mode.
 - **[Slice Media Swiper Adapter](https://github.com/slicemedia/swiper-adapter)** — optional
   Webflow-specific adapter around upstream Swiper
 - **[Slice Media Spaces Deployer](https://github.com/slicemedia/spaces-deployer)** — optional
-  version-preserving deployment for DigitalOcean Spaces
+  stable or immutable asset deployment for DigitalOcean Spaces
 
 Agent Kit connects projects to the official Webflow MCP server; DevKit does not duplicate the MCP
 server or perform remote writes and publishing. If the wizard selects agent targets, the project

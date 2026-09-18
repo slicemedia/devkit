@@ -19,6 +19,7 @@ function setViewport(width: number, height = window.innerHeight): void {
 
 afterEach(() => {
   setViewport(originalWidth, originalHeight);
+  vi.restoreAllMocks();
 });
 
 describe("DOM readiness", () => {
@@ -48,6 +49,24 @@ describe("DOM readiness", () => {
 });
 
 describe("Webflow breakpoints", () => {
+  it("resamples after an idle interval and does not deliver duplicate immediate notifications", () => {
+    setViewport(1200);
+    const service = createBreakpointService({ window });
+    service.subscribe(() => {})();
+    setViewport(390);
+    window.dispatchEvent(new Event("resize"));
+    const listener = vi.fn();
+    const stop = service.subscribe(listener);
+    expect(listener).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ name: "tiny", width: 390 }),
+      null,
+    );
+    stop();
+    setViewport(800);
+    expect(service.getSnapshot().name).toBe("medium");
+    expect(service.isAtLeast("medium")).toBe(true);
+    service.destroy();
+  });
   it("uses the native tiny, small, medium, and main boundaries", () => {
     expect(getWebflowBreakpoint(479).name).toBe("tiny");
     expect(getWebflowBreakpoint(480).name).toBe("small");
@@ -105,7 +124,7 @@ describe("CSS length resolution", () => {
     expect(resolveCssLength("25%", { relativeTo: 400 })).toBe(100);
     expect(resolveCssLength("1in")).toBe(96);
     expect(resolveCssLength("calc(100% - 1rem)")).toBeNull();
-    expect(resolveCssLength("2")).toBeNull();
+    expect(resolveCssLength("2")).toBe(2);
   });
 
   it("preserves supported decimal spellings", () => {
@@ -113,6 +132,24 @@ describe("CSS length resolution", () => {
     expect(resolveCssLength(".5rem", { rootFontSize: 16 })).toBe(8);
     expect(resolveCssLength("1.px")).toBe(1);
     expect(resolveCssLength("-0.25in")).toBe(-24);
+  });
+
+  it("distinguishes mobile viewport heights and removes its measurement element", () => {
+    const viewportHeights = { small: 600, large: 800, dynamic: 700 };
+    expect(resolveCssLength("50svh", { viewportHeights })).toBe(300);
+    expect(resolveCssLength("50lvh", { viewportHeights })).toBe(400);
+    expect(resolveCssLength("-50dvh", { viewportHeights })).toBe(-350);
+    const children = document.documentElement.childElementCount;
+    vi.spyOn(window, "getComputedStyle").mockImplementation(
+      (element) =>
+        ({
+          height: (element as HTMLElement).style.height === "100svh" ? "600px" : "700px",
+        }) as CSSStyleDeclaration,
+    );
+    expect(resolveCssLength("50svh", { window })).toBe(300);
+    expect(resolveCssLength("50dvh", { window })).toBe(350);
+    expect(document.documentElement.childElementCount).toBe(children);
+    expect(resolveCssLength("50dvh")).toBeNull();
   });
 
   it("rejects long malformed numeric input without pathological backtracking", () => {

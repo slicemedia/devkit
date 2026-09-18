@@ -13,8 +13,10 @@ The asset base URL is explicitly supplied by the consuming project. Generated pr
 are instructions, not evidence that an asset is already deployed. No command writes to Webflow.
 `--out` and `--manifest` intentionally replace the named generated files. Build writes a minimal
 `dist/webflow-scripts.json` manifest of actual outputs. Run `catalog --manifest` after building to
-replace it with full contracts/snippets; this documentation manifest uses schema version 1 and an
-`entries` array containing the same documented contracts and snippets as the JSON CLI output.
+enrich matching built entries with contracts/snippets while preserving their actual paths and the
+`vendors` list. CSS tags require an emitted manifest entry and an existing file; no stylesheet is
+invented before a build. Use `--out-dir` for a custom build directory. Rebuild when source or output
+configuration changes before regenerating the deployment manifest.
 
 ## One authoritative contract
 
@@ -31,7 +33,7 @@ named export in `devkit.config.json`:
   "entries": [
     {
       "name": "feature",
-      "input": "src/addons/feature.ts",
+      "input": "src/addons/feature.entry.ts",
       "definition": {
         "module": "src/features/feature.ts",
         "export": "featureDefinition"
@@ -46,8 +48,10 @@ module locally, so select only trusted, side-effect-free metadata modules. Never
 composition entry that initializes the site. Existing JSON metadata and `*.addon.json` sidecars
 remain supported; they can declare `usage`, `structure`, and `attributeDetails` without executing a module.
 
-Public addon entries automatically receive a build contract pointing to their own
-`addons/<name>.js` and optional `addons/<name>.css`; project entries use `projects/`.
+Public addon entries automatically receive a build contract pointing to their own script under
+`addons/` with optional adjacent CSS; project entries use `projects/`. Marked `.entry.ts` / `.entry.js`
+files retain category folders and lose `.entry` in output filenames. Legacy flat entry formats
+retain their existing paths. Catalogs and snippets use these exact paths without manual overrides.
 An explicit `bundle: { input, scriptFile, cssFile? }` overrides those paths in both the default
 build and the guides. `input` is relative to the project; output filenames are relative to `dist`.
 Metadata configuration does not disable discovery of other addons. The guide preserves the
@@ -63,11 +67,14 @@ entry; each real addon is authored separately.
 ## Development and custom build paths
 
 Development snippets load Vite's HMR client and that addon's browser entry. CSS imported by that entry
-is handled by Vite during development. These snippets are for approved testing pages only.
+is handled by Vite during development. Declared vendors are built at server startup; restart after
+vendor edits. Start with `slicemedia-devkit dev --origin https://testing.example.com` using the exact
+approved testing-page origin. Repeat `--origin` for additional origins. These snippets are for
+approved testing pages only.
 
 ```sh
 slicemedia-devkit explain counter --dev-url http://localhost:5174 --hmr=false
-slicemedia-devkit explain feature --entry src/addons/feature.ts --script-file addons/feature.js --css-file addons/feature.css --public-base-url https://assets.example.com/project/assets
+slicemedia-devkit explain feature --entry src/addons/feature.entry.ts --script-file addons/feature.js --css-file addons/feature.css --public-base-url https://assets.example.com/project/assets
 ```
 
 When overriding paths on `explain`, supply the complete entry's relevant paths. These command-line

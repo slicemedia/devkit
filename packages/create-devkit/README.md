@@ -1,7 +1,7 @@
 # `@slicemedia/create-devkit`
 
 Starts an interactive wizard for a new neutral TypeScript Webflow project. The optional directory
-argument follows the convention used by established project creators. Run the `0.1.0` release
+argument follows the convention used by established project creators. Run the current release
 candidate through the npm `next` tag with any supported package manager:
 
 ```sh
@@ -17,6 +17,13 @@ confirmation. Use Space to select or clear items in the multi-select lists, then
 continue. It never overwrites a non-empty directory. Capabilities are opt-in and generate typed
 integration modules that remain disconnected from the project entry until the project chooses to
 compose them.
+
+Slider, animation, and tooltip capabilities also create declared `src/vendors/` entries. Their
+libraries build once under `dist/vendor/`; generated asynchronous integrations load and share
+them only when called. Await slider/tooltip factories or `loadProjectAnimations()` after matching
+markup needs the behavior, optionally near the viewport. Prefer Swiper for slider requests while
+honoring an explicit user choice of native Webflow or another implementation. See
+[shared dependencies](../../docs/shared-dependencies.md).
 
 Agent targets add the independent `@slicemedia/agent-kit` package and a deterministic
 `agents:generate` script. Run it through the selected package manager after installation to create

@@ -1,5 +1,13 @@
 # @slicemedia/devtools
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [56d2ae0]
+- Updated dependencies [885dbac]
+  - @slicemedia/devkit-core@0.5.0
+
 ## 0.1.0
 
 ### Minor Changes

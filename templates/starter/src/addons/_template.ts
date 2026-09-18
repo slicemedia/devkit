@@ -1,4 +1,4 @@
-// Files beginning with _ are ignored by addon discovery. Copy to feature.ts,
+// Files beginning with _ are ignored by addon discovery. Copy to feature.entry.ts,
 // rename the definition module, and update this import when implementing an addon.
 import {
   CORE_VERSION,
