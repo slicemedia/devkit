@@ -2,7 +2,7 @@
   "entries": [
     {
       "name": "counter",
-      "input": "src/addons/counter.ts",
+      "input": "src/addons/counter.entry.ts",
       "definition": { "module": "src/counter.ts", "export": "counterDefinition" }
     }
   ]

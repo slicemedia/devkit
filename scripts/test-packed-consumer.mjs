@@ -595,10 +595,13 @@ async function exerciseProject(projectDirectory, manager, selectedAgentTargets) 
   await run(installCommand, installArguments, { cwd: projectDirectory });
   // Test-only entries verify installed CLI discovery alongside the configured neutral project.
   // These fixtures never ship in the creator template or addon packages.
-  await mkdir(join(projectDirectory, "src/addons"), { recursive: true });
-  for (const name of ["fixture-first", "fixture-second"]) {
+  for (const [name, input] of [
+    ["fixture-first", "src/addons/fixture-first.ts"],
+    ["fixture-second", "src/addons/animations/fixture-second.entry.ts"],
+  ]) {
+    await mkdir(dirname(join(projectDirectory, input)), { recursive: true });
     await writeFile(
-      join(projectDirectory, `src/addons/${name}.ts`),
+      join(projectDirectory, input),
       `import { CORE_VERSION, installDevKitRuntime } from "@slicemedia/devkit-core";
 const { runtime } = installDevKitRuntime({ version: CORE_VERSION });
 if (!runtime.getAddon("${name}")) runtime.registerAddon({ name: "${name}", version: "0.1.0", value: { getState: () => ({ initialized: true }) } });
@@ -611,7 +614,7 @@ if (!runtime.getAddon("${name}")) runtime.registerAddon({ name: "${name}", versi
   }
   await access(join(projectDirectory, "dist/projects/project.js"));
   await access(join(projectDirectory, "dist/addons/fixture-first.js"));
-  await access(join(projectDirectory, "dist/addons/fixture-second.js"));
+  await access(join(projectDirectory, "dist/addons/animations/fixture-second.js"));
   const buildManifest = JSON.parse(
     await readFile(join(projectDirectory, "dist/webflow-scripts.json"), "utf8"),
   );

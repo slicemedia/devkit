@@ -64,7 +64,7 @@ export async function discoverAddonEntries(root: string): Promise<readonly Addon
       entries.map((entry) => path.resolve(root, entry.bundle?.input ?? entry.input)),
     );
     for (const input of candidates) {
-      if (publicKind(root, input) && !inputs.has(input))
+      if (publicEntry(root, input) && !inputs.has(input))
         entries.push(await entryFromPath(root, input));
     }
     assertUniqueNames(entries);
@@ -209,7 +209,7 @@ async function normalizeConfiguredEntry(root: string, entry: EntryConfig): Promi
     throw new Error(`Invalid entry kind for ${entry.name}. Expected addon or project.`);
   const input = path.resolve(root, entry.input);
   await access(input);
-  const sidecar = await readSidecar(input);
+  const sidecar = await readSidecar(root, input);
   return withBrowserBundle(root, mergeEntry(entry.name, input, entry, sidecar));
 }
 
@@ -223,9 +223,9 @@ async function discoverCandidates(root: string): Promise<readonly string[]> {
       const relative = path.relative(sourceRoot, file).split(path.sep).join("/");
       if (relative.split("/").some((part) => part.startsWith("_") || part.startsWith(".")))
         return false;
-      if (/\.(?:test|spec|d)\.[^.]+$/u.test(relative)) return false;
+      if (/\.(?:test|spec|d)(?:\.entry)?\.[^.]+$/u.test(relative)) return false;
       return (
-        publicKind(root, file) !== undefined ||
+        publicEntry(root, file) !== undefined ||
         relative.startsWith("entries/") ||
         /^[^/]+\/index\.(?:ts|tsx|js|mjs)$/.test(relative) ||
         /(?:^|\/)addons\/[^/]+\/index\.(?:ts|tsx|js|mjs)$/.test(relative) ||
@@ -238,49 +238,73 @@ async function discoverCandidates(root: string): Promise<readonly string[]> {
 async function entryFromPath(root: string, input: string): Promise<AddonEntry> {
   const parsed = path.parse(input);
   const parent = path.basename(parsed.dir);
-  const rawName = parsed.name === "index" ? parent : parsed.name.replace(/\.entry$/, "");
+  const stem = parsed.name.replace(/\.entry$/, "");
+  const rawName = isFolderIndex(root, input) ? parent : stem;
   const name = kebabCase(rawName);
   validateName(name);
-  const sidecar = await readSidecar(input);
+  const sidecar = await readSidecar(root, input);
   return withBrowserBundle(root, mergeEntry(name, input, {}, sidecar));
 }
 
-function publicKind(root: string, input: string): AddonEntry["kind"] {
+function publicEntry(
+  root: string,
+  input: string,
+): { kind: "addon" | "project"; scriptPath?: string } | undefined {
   const relative = path.relative(root, input).split(path.sep).join("/");
-  const match =
-    /^src\/(addons|projects|entries)\/(?:[^/]+\.(?:ts|tsx|js|mjs)|[^/]+\/index\.(?:ts|tsx|js|mjs))$/u.exec(
-      relative,
-    );
-  return match ? (match[1] === "projects" ? "project" : "addon") : undefined;
+  const match = /^src\/(addons|projects|entries)\/(.+)$/u.exec(relative);
+  if (!match) return undefined;
+  const kind = match[1] === "projects" ? "project" : "addon";
+  const sourcePath = match[2]!;
+  // Top-level files, including existing .entry files, retain configured/kebab-case output names.
+  if (/^[^/]+\.(?:ts|tsx|js|mjs)$/u.test(sourcePath)) return { kind };
+  // Nested entry markers preserve their paths, including index filenames.
+  if (/\.entry\.(?:ts|tsx|js|mjs)$/u.test(sourcePath)) {
+    return { kind, scriptPath: sourcePath.replace(/\.entry\.[^.]+$/u, ".js") };
+  }
+  // Keep the original one-folder index convention backward compatible.
+  if (/^[^/]+\/index\.(?:ts|tsx|js|mjs)$/u.test(sourcePath)) return { kind };
+  return undefined;
 }
 
 function withBrowserBundle(root: string, entry: AddonEntry): AddonEntry {
-  const kind = entry.kind ?? publicKind(root, entry.input);
+  const discovered = publicEntry(root, entry.input);
+  const kind = entry.kind ?? discovered?.kind;
   if (!kind) return entry;
   return {
     ...entry,
     kind,
     bundle: entry.bundle ?? {
       input: path.relative(root, entry.input).split(path.sep).join("/"),
-      scriptFile: `${kind === "project" ? "projects" : "addons"}/${entry.name}.js`,
+      scriptFile: `${kind === "project" ? "projects" : "addons"}/${discovered?.scriptPath ?? `${entry.name}.js`}`,
     },
   };
 }
 
 function assertUniqueNames(entries: readonly AddonEntry[]): void {
-  const names = new Set<string>();
+  const names = new Map<string, string>();
   for (const entry of entries) {
-    if (names.has(entry.name)) throw new Error(`Duplicate public entry name: ${entry.name}.`);
-    names.add(entry.name);
+    if (names.has(entry.name))
+      throw new Error(
+        `Duplicate public entry name: ${entry.name}. ${names.get(entry.name)} and ${entry.input} must have unique names; rename an entry or set its name in devkit.config.json.`,
+      );
+    names.set(entry.name, entry.input);
   }
 }
 
-async function readSidecar(input: string): Promise<Partial<EntryConfig>> {
+function isFolderIndex(root: string, input: string): boolean {
+  return (
+    path.parse(input).name === "index" ||
+    /^src\/(?:addons|projects|entries)\/.+\/index\.entry\.[^.]+$/u.test(
+      path.relative(root, input).split(path.sep).join("/"),
+    )
+  );
+}
+
+async function readSidecar(root: string, input: string): Promise<Partial<EntryConfig>> {
   const parsed = path.parse(input);
-  const sidecarPath =
-    parsed.name === "index"
-      ? path.join(parsed.dir, "addon.json")
-      : path.join(parsed.dir, `${parsed.name.replace(/\.entry$/, "")}.addon.json`);
+  const sidecarPath = isFolderIndex(root, input)
+    ? path.join(parsed.dir, "addon.json")
+    : path.join(parsed.dir, `${parsed.name.replace(/\.entry$/, "")}.addon.json`);
   try {
     return JSON.parse(await readFile(sidecarPath, "utf8")) as Partial<EntryConfig>;
   } catch (error) {

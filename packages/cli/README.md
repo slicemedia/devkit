@@ -26,9 +26,13 @@ slicemedia-devkit webflow components --site "$SLICEMEDIA_WEBFLOW_SITE_ID"
 slicemedia-devkit webflow scan --url https://example.webflow.io
 ```
 
-`slicemedia-devkit build` discovers `src/addons/<name>.ts`, `src/addons/<name>/index.ts`, and optional
-`src/projects/` entries. Each becomes an independent ES2018 IIFE under `dist/addons/` or
-`dist/projects/`, with its own CSS when imported. Configured entries add metadata/custom paths;
+`slicemedia-devkit build` recursively discovers `*.entry.ts` / `*.entry.js` (also TSX/MJS) under
+`src/addons/` and optional `src/projects/`. Each becomes an independent ES2018 IIFE under
+`dist/addons/` or `dist/projects/`, preserving subfolders and removing `.entry` from the filename,
+with adjacent CSS when imported. `index.entry.ts` retains `index.js` inside its folder.
+Legacy `src/addons/<name>.ts` and `src/addons/<name>/index.ts` formats retain their flat outputs;
+unmarked nested helper files are not public bundles. Public names must remain unique across folders.
+Shared vendor URLs resolve automatically from every output depth. Configured entries add metadata/custom paths;
 they do not disable discovery of new addons. A build manifest lists the actual outputs.
 Use `--out-dir` for another destination or an explicit `--entry` with `--script-file` and
 `--css-file` for a single custom build. See [standalone builds](../../docs/standalone-builds.md).

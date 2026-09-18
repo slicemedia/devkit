@@ -47,6 +47,8 @@ export async function startDevServer(options: DevServerOptions): Promise<ViteDev
   const server = await createServer({
     root: options.root,
     logLevel: "silent",
+    // Source modules retain their own URLs in development, regardless of their folder depth.
+    define: { __SLICEMEDIA_VENDOR_DIRECTORY__: JSON.stringify("/vendor/") },
     plugins: [vendorPlugin],
     server: {
       host: options.host ?? "127.0.0.1",

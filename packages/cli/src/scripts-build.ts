@@ -87,6 +87,7 @@ export async function buildScripts(options: BuildScriptsOptions): Promise<BuildS
       outDir: path.join(outDir, path.posix.dirname(entry.scriptFile)),
       scriptFileName: path.posix.basename(entry.scriptFile),
       cssFileName: path.posix.basename(entry.cssFile),
+      vendorDirectory: `${path.posix.relative(path.posix.dirname(entry.scriptFile), "vendor") || "."}/`,
       emptyOutDir: false,
       ...(options.sourcemap === undefined ? {} : { sourcemap: options.sourcemap }),
       ...(options.build ? { build: options.build } : {}),

@@ -7,11 +7,21 @@ uploads a directory. The build is provider-independent:
 ```text
 dist/addons/<name>.js        # select only the needed addon tags on each page
 dist/addons/<name>.css       # only when emitted; place this CSS in the head
+dist/addons/animations/counter.js  # categories from marked source entries are preserved
+dist/addons/sliders/gallery/index.js  # an addon can retain its own output folder
 dist/projects/<name>.js      # optional, deliberately composed project behavior
 dist/vendor/<name>.js        # shared dependencies loaded on demand by addons
 dist/vendor/<name>.css       # shared CSS loaded by the dependency loader
 dist/webflow-scripts.json    # actual entry and vendor file paths
 ```
+
+Nested `*.entry.ts` / `*.entry.js` sources retain their relative folders in `dist/`; the `.entry`
+marker is removed from public filenames. The optional Spaces Deployer and recursive directory
+uploads in GitHub Actions preserve these paths. For example, `dist/addons/animations/counter.js`
+is served at `<asset-base>/addons/animations/counter.js`. Do not flatten files when uploading or
+copy only the first level. Shared vendor URLs are calculated by the build for every folder depth.
+Moving an entry to another category changes its URL; deploy the build and update affected embeds
+together. See [entry conventions](standalone-builds.md).
 
 Add `--sourcemap` to the build when private JavaScript maps are needed. They are written only under
 `.slicemedia/sourcemaps/`, outside `dist/`, with no public map references. Uploading `dist/` does

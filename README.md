@@ -64,7 +64,9 @@ slider?.init(); // Own and destroy this controller in the addon lifecycle.
 ```
 
 In a generated project, use the selected manager's `dev` script for the CORS-enabled local server
-and its `build` script for separate files at `dist/addons/<name>.js`. Load only the addon scripts
+and its `build` script for separate files under `dist/addons/`. New `.entry.ts` / `.entry.js` files
+are discovered recursively under `src/addons/`; category folders are preserved in output URLs.
+Legacy entry formats remain supported. See [entry conventions](docs/standalone-builds.md). Load only the addon scripts
 needed on each Webflow page. Selected heavy dependencies build once under `dist/vendor/` and load
 on demand across addons; optional project scripts remain separate. Deploy all of `dist/`, including
 vendor JS/CSS. See [shared dependencies](docs/shared-dependencies.md) and [deployment](docs/deployment.md).

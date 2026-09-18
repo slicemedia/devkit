@@ -115,7 +115,7 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
     );
   } else {
     lines.push(
-      "This is a reusable source module. Create a browser entry under src/addons/<name>.ts that initializes and registers its API, or declare an explicit browser bundle in devkit.config.json.",
+      "This is a reusable source module. Create a browser entry under src/addons/ using a .entry.ts or .entry.js filename that initializes and registers its API; category folders may nest. Alternatively declare an explicit browser bundle in devkit.config.json.",
     );
   }
   lines.push("", "## Production handoff", "");

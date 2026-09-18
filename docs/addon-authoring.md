@@ -7,7 +7,8 @@ implement idempotent `init`, reconciling `refresh`, complete `destroy`, `setOpti
 `@slicemedia/devkit-addon/example` is the only packaged example. It is deliberately excluded from the
 root export and never initializes itself. Copy its lifecycle shape into a consumer project, replace
 its neutral contract, and import the finished behavior from its own browser entry at
-`src/addons/<name>.ts`. Each entry builds into an independently loadable script; see
+`src/addons/<name>.entry.ts` or a nested category folder. Each marked entry builds into an
+independently loadable script at the corresponding path under `dist/addons/`; see
 [standalone builds](standalone-builds.md).
 
 Use only documented `data-wft-*` hooks, preserve unrelated DOM state, and test multiple instances,

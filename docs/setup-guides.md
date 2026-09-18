@@ -32,7 +32,7 @@ named export in `devkit.config.json`:
   "entries": [
     {
       "name": "feature",
-      "input": "src/addons/feature.ts",
+      "input": "src/addons/feature.entry.ts",
       "definition": {
         "module": "src/features/feature.ts",
         "export": "featureDefinition"
@@ -47,8 +47,10 @@ module locally, so select only trusted, side-effect-free metadata modules. Never
 composition entry that initializes the site. Existing JSON metadata and `*.addon.json` sidecars
 remain supported; they can declare `usage` and `attributeDetails` without executing a module.
 
-Public addon entries automatically receive a build contract pointing to their own
-`addons/<name>.js` and optional `addons/<name>.css`; project entries use `projects/`.
+Public addon entries automatically receive a build contract pointing to their own script under
+`addons/` with optional adjacent CSS; project entries use `projects/`. Marked `.entry.ts` / `.entry.js`
+files retain category folders and lose `.entry` in output filenames. Legacy flat entry formats
+retain their existing paths. Catalogs and snippets use these exact paths without manual overrides.
 An explicit `bundle: { input, scriptFile, cssFile? }` overrides those paths in both the default
 build and the guides. `input` is relative to the project; output filenames are relative to `dist`.
 Metadata configuration does not disable discovery of other addons. The guide preserves the
@@ -71,7 +73,7 @@ approved testing pages only.
 
 ```sh
 slicemedia-devkit explain counter --dev-url http://localhost:5174 --hmr=false
-slicemedia-devkit explain feature --entry src/addons/feature.ts --script-file addons/feature.js --css-file addons/feature.css --public-base-url https://assets.example.com/project/assets
+slicemedia-devkit explain feature --entry src/addons/feature.entry.ts --script-file addons/feature.js --css-file addons/feature.css --public-base-url https://assets.example.com/project/assets
 ```
 
 When overriding paths on `explain`, supply the complete entry's relevant paths. These command-line

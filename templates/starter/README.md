@@ -13,15 +13,21 @@ starter is deliberately neutral: no optional capability is imported by `src/main
 4. Import only the generated files under `src/integrations/` that the project is ready to compose.
 5. Run `pnpm typecheck` and `pnpm build`.
 
-Create each public browser entry in `src/addons/<name>.ts` or `src/addons/<name>/index.ts`.
-The build emits separate standalone ES2018 scripts at `dist/addons/<name>.js` and optional
-`dist/addons/<name>.css`. Shared helpers belong outside these entry paths or in `_`-prefixed files.
+Create public browser entries with `.entry.ts` or `.entry.js` filenames anywhere under
+`src/addons/`. For example, `src/addons/animations/counter.entry.ts` produces the standalone ES2018
+script `dist/addons/animations/counter.js` and optional adjacent CSS. An addon's own
+`index.entry.ts` keeps `index.js` in its output folder. Ordinary nested helper files are imported
+by these entries. Legacy `src/addons/<name>.ts` and `src/addons/<name>/index.ts` entries remain
+supported, so keep helpers out of those positions or prefix them with `_`.
+Entry names must be unique across folders; configure distinct names for duplicate basenames.
+Moving a marked entry changes its public URL, so update its Webflow tags after deployment.
 Selected slider, animation, and tooltip capabilities also declare shared vendor entries in
 `devkit.config.json`. These build once under `dist/vendor/`; await the functions in
 `src/integrations/` only after matching markup needs them, optionally near the viewport. Swiper,
 GSAP/ScrollTrigger, and Tippy stay out of other addon downloads. Import vendor code and CSS only in
 `src/vendors/`, not in each addon. Dev builds vendors at startup; restart after vendor changes.
-Deploy the complete `dist/` tree with paths intact through any hosting action.
+Vendor URLs resolve automatically at every addon folder depth. Deploy the complete `dist/` tree
+with paths intact through any hosting action.
 
 New addons are discovered automatically alongside entries configured in `devkit.config.json`.
 `pnpm catalog -- --json` inspects all public entries. Use

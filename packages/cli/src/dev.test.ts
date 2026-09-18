@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -18,6 +18,17 @@ it("serves project code but denies private sourcemaps and normal sensitive files
   );
   await writeFile(path.join(root, ".env"), "EXAMPLE=value");
   await mkdir(path.join(root, "src/vendors"));
+  await mkdir(path.join(root, "src/addons/animations/counter"), { recursive: true });
+  for (const source of ["shared-module.ts", "assets.ts"]) {
+    await copyFile(
+      path.resolve(import.meta.dirname, "../../core/src", source),
+      path.join(root, "src/addons/animations/counter", source),
+    );
+  }
+  await writeFile(
+    path.join(root, "src/addons/animations/counter/index.entry.ts"),
+    'export { resolveVendorAsset } from "./shared-module";',
+  );
   await writeFile(
     path.join(root, "src/vendors/shared.ts"),
     'import "./shared.css"; document.title="shared-dependency";',
@@ -31,6 +42,20 @@ it("serves project code but denies private sourcemaps and normal sensitive files
   try {
     const url = server.resolvedUrls!.local[0]!;
     expect((await fetch(new URL("src/main.ts", url))).status).toBe(200);
+    expect((await fetch(new URL("src/addons/animations/counter/index.entry.ts", url))).status).toBe(
+      200,
+    );
+    const { resolveVendorAsset } = await server.ssrLoadModule(
+      "/src/addons/animations/counter/index.entry.ts",
+    );
+    for (const modulePath of [
+      "src/integrations/shared.ts",
+      "src/addons/animations/counter/index.entry.ts",
+    ]) {
+      const resolved = resolveVendorAsset("shared.js", new URL(modulePath, url).href);
+      expect(resolved).toBe(new URL("vendor/shared.js", url).href);
+      expect((await fetch(resolved)).status).toBe(200);
+    }
     expect((await fetch(new URL(".slicemedia/sourcemaps/project.js.map", url))).status).toBe(403);
     expect((await fetch(new URL(".env", url))).status).toBe(403);
     for (const file of ["src/main.ts", "src/vendor/shared.js", "vendor/shared.css"]) {

@@ -27,8 +27,9 @@ automatically load it on every page, or create an unused example addon.
 - Use scoped `data-wft-*` hooks on existing Webflow elements. Keep base styling and layout editable
   in Webflow, with meaningful content visible and usable when motion is absent.
 - Keep reusable definitions inert. Initialize and register the public API from the addon's own
-  `src/addons/<name>.ts` or `src/addons/<name>/index.ts`; it builds independently to
-  `dist/addons/<name>.js` with optional CSS. See [standalone builds](standalone-builds.md).
+  `src/addons/<name>.entry.ts` or a nested path such as `src/addons/animations/<name>.entry.ts`;
+  it builds independently at the matching path under `dist/addons/`, with `.entry` removed and
+  optional adjacent CSS. See [standalone builds](standalone-builds.md).
 - Give each root its own animation state. Own the timeline, ScrollTriggers, responsive conditions,
   refresh behavior, and teardown. Use a GSAP context or match-media lifecycle where appropriate,
   and clean up separately owned listeners, observers, timers, and DOM changes too.

@@ -8,7 +8,7 @@ GSAP addons for richer custom motion and follow the user's chosen approach.
 ## 1. Prepare a project and its Webflow contract
 
 Create a neutral DevKit project and install its dependencies. Copy `counter.ts` into the project's
-`src/` and `addons/counter.ts` into `src/addons/counter.ts`; copy `devkit.config.json` to its root. The included
+`src/` and `addons/counter.entry.ts` into `src/addons/counter.entry.ts`; copy `devkit.config.json` to its root. The included
 `tsconfig.json` checks this example inside the DevKit repository; keep the generated project's own
 TypeScript configuration when copying the example.
 
@@ -37,7 +37,7 @@ pnpm devkit -- explain counter
 ```
 
 Use the development snippet only on an approved Webflow testing page. It contains Vite's HMR client
-and the standalone `src/addons/counter.ts` entry. Importing the counter definition alone does not initialize it.
+and the standalone `src/addons/counter.entry.ts` entry. Importing the counter definition alone does not initialize it.
 Local HTML is only a smoke test; verify the actual rendered Webflow page too.
 
 Check multiple counters, desktop/mobile widths, scrolling away and back, background tabs, reduced

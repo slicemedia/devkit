@@ -1,5 +1,9 @@
 import { loadAssetOnce, type LoadAssetOptions } from "./assets.js";
 
+// Replaced by the DevKit CLI for each build output and for the local development server.
+// Other bundlers can omit it: the standard sibling-vendor layout remains the fallback.
+declare const __SLICEMEDIA_VENDOR_DIRECTORY__: string | undefined;
+
 const MODULES = Symbol.for("slicemedia.devkit.shared-modules.v1");
 type ModuleDocument = Document & { [MODULES]?: Map<string, unknown> };
 
@@ -35,9 +39,8 @@ export interface LoadSharedModuleOptions extends Omit<LoadAssetOptions, "type" |
   readonly styles?: readonly Omit<LoadAssetOptions, "type" | "document" | "isReady">[];
 }
 
-/** Capture import.meta.url in the integration module, before asynchronous initialization.
- * Standard src/integrations modules and dist/addons or dist/projects entries use a sibling vendor
- * directory. Supply an explicit vendor base URL when using a different output layout.
+/** Capture import.meta.url before asynchronous initialization. The CLI supplies the vendor
+ * directory for each output depth. An explicit base URL supports separately hosted vendors.
  */
 export function resolveVendorAsset(
   file: string,
@@ -46,7 +49,11 @@ export function resolveVendorAsset(
 ): string {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.(?:js|css)$/u.test(file))
     throw new TypeError("Expected a vendor JS or CSS filename.");
-  return new URL(file, vendorBaseUrl ?? new URL("../vendor/", moduleUrl)).href;
+  const directory =
+    typeof __SLICEMEDIA_VENDOR_DIRECTORY__ === "string"
+      ? __SLICEMEDIA_VENDOR_DIRECTORY__
+      : "../vendor/";
+  return new URL(file, vendorBaseUrl ?? new URL(directory, moduleUrl)).href;
 }
 
 /** Load a vendor's JS and CSS on demand. Separate addon bundles share the same page registry. */

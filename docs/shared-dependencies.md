@@ -1,6 +1,6 @@
 # Shared dependencies without a universal addon bundle
 
-Keep each addon independently selectable at `dist/addons/<name>.js`. Put heavy dependency imports
+Keep each addon independently selectable under `dist/addons/`, including nested category folders. Put heavy dependency imports
 in project-owned vendor entries so multiple addons download and execute one copy of a library.
 Selecting the slider, animations, or tooltips capability creates both a typed asynchronous loader
 under `src/integrations/` and its vendor entry under `src/vendors/`. The neutral starter adds none.
@@ -69,11 +69,17 @@ to the project's own pinned dependency so an unrelated global cannot silently ch
 
 ## URLs, development, and deployment
 
-Capture `import.meta.url` at module scope in a loader under `src/integrations/` and pass it to
-`resolveVendorAsset()`. For production IIFEs, the build captures the executing script URL before
-asynchronous work. Default `addons/` and `projects/` scripts resolve their sibling `vendor/`
-directory on the same host and deployment prefix. A custom output nesting or separately hosted
-vendor tree needs an explicit `vendorBaseUrl` ending in `/`.
+Capture `import.meta.url` at module scope in the loader and pass it to `resolveVendorAsset()`.
+For production IIFEs, the build captures the executing script URL before asynchronous work and
+supplies the relative vendor directory for that output. Nested addon/project folders and custom
+`bundle.scriptFile` paths resolve `vendor/` on the same host and deployment prefix automatically.
+The default build emits vendors alongside entries even with a custom `--out-dir`.
+In local development, source modules at any depth resolve vendors at the dev server's `/vendor/`.
+Only a separately hosted vendor tree needs an explicit `vendorBaseUrl` ending in `/`.
+
+The CLI replaces the internal `__SLICEMEDIA_VENDOR_DIRECTORY__` constant while compiling the core
+helper. Outside the CLI, the unmodified ESM helper retains the `../vendor/` fallback; a custom
+bundler must supply its own directory through that define or pass an explicit vendor base URL.
 
 `slicemedia-devkit dev --origin https://testing.example.com` builds the selected vendors on startup
 and serves them at `/src/vendor/` and `/vendor/`; normal source modules keep Vite HMR. Restart the

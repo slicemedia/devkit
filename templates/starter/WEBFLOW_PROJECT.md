@@ -2,8 +2,11 @@
 
 Webflow owns editable structure, components, base styles, CMS content, and forms. This project owns
 explicitly authored browser enhancements and custom animation addons. Put each public addon entry in
-`src/addons/<name>.ts` or `src/addons/<name>/index.ts`; each builds to its own
-`dist/addons/<name>.js` and optional stylesheet. Load only the scripts needed on each Webflow page.
+`src/addons/<category>/<name>.entry.ts` or `.entry.js`; categories are optional and may nest.
+Each builds to its own `dist/addons/<category>/<name>.js` and optional stylesheet. For an addon's
+own folder, `index.entry.ts` emits `index.js` in that folder. Keep public names unique across
+folders. Legacy flat files and one-folder `index.ts` entries still build; ordinary nested helpers
+are imported by marked entries. Load only the scripts needed on each Webflow page.
 Use `src/main.ts` or `src/projects/` only for optional, deliberately composed project behavior.
 
 - Prefer native Webflow layout, content, forms, and base styling. Animate existing markup.
