@@ -63,9 +63,10 @@ and its `build` script for the site-owned bundle. Hosting stays project-owned. T
 DigitalOcean Spaces can install the independent `@slicemedia/spaces-deployer` package and use its
 reviewed plan/apply workflow. The generated Spaces integration requires Spaces Deployer 0.2 or
 newer and selects stable URLs with scoped CDN invalidation. Supply a dedicated project prefix,
-the matching CDN endpoint ID, and a DigitalOcean API token during apply. Keep the bucket's object
-versioning enabled so prior files remain available for rollback. Immutable release URLs remain
-available through the deployer's explicit `immutable` mode.
+the matching CDN endpoint ID, and a DigitalOcean API token during apply. With Spaces Deployer 0.2.1
+or newer, bucket versioning is optional; enable it to retain prior files for rollback. Uploads are
+verified with version IDs when available, or ETags and planned metadata otherwise. Immutable
+release URLs remain available through the deployer's explicit `immutable` mode.
 
 ## Product family
 
