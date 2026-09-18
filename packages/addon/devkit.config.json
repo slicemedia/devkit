@@ -1,0 +1,12 @@
+{
+  "entries": [
+    {
+      "name": "example",
+      "input": "src/example/index.ts",
+      "definition": {
+        "module": "src/example/index.ts",
+        "export": "exampleAddonDefinition"
+      }
+    }
+  ]
+}

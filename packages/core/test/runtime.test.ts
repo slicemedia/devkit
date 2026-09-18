@@ -85,5 +85,68 @@ describe("global runtime installation", () => {
       "already registered",
     );
     expect(runtime.getAddon("counter")?.value).toBe(value);
+    expect(runtime.counter).toBe(value);
+    expect(Object.getOwnPropertyDescriptor(runtime, "counter")?.writable).toBe(false);
+  });
+
+  it("does not allow an addon to replace runtime or prototype properties", () => {
+    const { runtime } = installDevKitRuntime({ version: "0.1.0", window: {} });
+    for (const name of [
+      "ready",
+      "queue",
+      "configure",
+      "getAddon",
+      "constructor",
+      "__proto__",
+      "then",
+    ]) {
+      expect(() => runtime.registerAddon({ name, version: "0.1.0", value: {} })).toThrow(
+        "reserved",
+      );
+      expect(runtime.getAddon(name)).toBeUndefined();
+    }
+    expect(runtime.addons).toHaveLength(0);
+  });
+
+  it("delivers ready callbacks before and after registration, including a pre-load window queue", async () => {
+    const early = vi.fn();
+    window.slicemediaDevKit = {
+      queue: [
+        (runtime) => {
+          runtime.whenReady("counter", early);
+        },
+      ],
+    };
+    const { runtime } = installDevKitRuntime({ version: "0.1.0" });
+    await runtime.ready;
+    expect(early).not.toHaveBeenCalled();
+    const api = { refresh: vi.fn() };
+    runtime.registerAddon({ name: "counter", version: "0.1.0", value: api });
+    const late = vi.fn();
+    runtime.whenReady("counter", late);
+    await runtime.ready;
+    expect(early).toHaveBeenCalledExactlyOnceWith(api, runtime);
+    expect(late).toHaveBeenCalledExactlyOnceWith(api, runtime);
+    runtime.registerAddon({ name: "counter", version: "0.1.0", value: api });
+    await runtime.ready;
+    expect(early).toHaveBeenCalledOnce();
+  });
+
+  it("cancels pending ready callbacks and isolates callback failures", async () => {
+    const { runtime } = installDevKitRuntime({ version: "0.1.0", window: {} });
+    const cancelled = vi.fn();
+    const cancel = runtime.whenReady("counter", cancelled);
+    cancel();
+    runtime.registerAddon({ name: "counter", version: "0.1.0", value: {} });
+    const cancelQueued = runtime.whenReady("counter", cancelled);
+    cancelQueued();
+    runtime.whenReady("counter", async () => {
+      throw new Error("consumer failed");
+    });
+    const healthy = vi.fn();
+    runtime.whenReady("counter", healthy);
+    await expect(runtime.ready).rejects.toThrow("consumer failed");
+    expect(cancelled).not.toHaveBeenCalled();
+    expect(healthy).toHaveBeenCalledOnce();
   });
 });

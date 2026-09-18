@@ -163,7 +163,7 @@ export function createProjectSlider(
     integrationFile: "src/integrations/animations.ts",
     renderIntegration: () => `import { gsap } from "gsap";
 
-/** Project-owned GSAP entry point. Import this module from main.ts when the composition is ready. */
+/** Project-owned GSAP integration. Import only from the addon/project entry that needs it. */
 export { gsap };
 `,
   },

@@ -49,6 +49,16 @@ export const exampleAddonDefinition = defineAddon<
   dependencies: [{ name: "@slicemedia/devkit-core", kind: "package" }],
   placement: "body-end",
   entry: "@slicemedia/devkit-addon/example",
+  usage: {
+    setup: [
+      "Add data-wft-example to a Webflow element.",
+      "Import createExampleAddon into the site composition and explicitly call init().",
+    ],
+    markup: "<div data-wft-example></div>",
+    notes: [
+      "This lifecycle reference changes only a state attribute. It supplies no visual behavior.",
+    ],
+  },
   setup(context) {
     const authoredState = new Map<HTMLElement, string | null>();
 

@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@11.21.0",
   "scripts": {
-    "build": "slicemedia-devkit build --entry src/main.ts --out-dir dist --script-file project.js --css-file project.css",
+    "build": "slicemedia-devkit build",
     "catalog": "slicemedia-devkit catalog --root .",
     "dev": "slicemedia-devkit dev",
     "sanitize": "slicemedia-devkit sanitize --root .",

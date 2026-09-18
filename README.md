@@ -2,12 +2,12 @@
 
 Slice Media DevKit is AI-first development infrastructure for teams building with Webflow. It is a
 neutral starting point for small enhancements and large codebases alike: Webflow keeps ownership of
-editable layout, components, styles, CMS, forms, and content, while the project bundle adds only the
+editable layout, components, styles, CMS, forms, and content, while the addon scripts add only the
 interactive behavior Webflow does not provide.
 
 Under the hood, DevKit provides a typed browser lifecycle, an addon authoring API, a local
 development/build CLI, read-only Webflow inspection, and an interactive project wizard. Every
-generated project owns one ES2018 IIFE plus optional CSS and starts without feature markup,
+public addon builds into its own standalone ES2018 IIFE plus optional CSS. Generated projects start without feature markup,
 selectors, integrations, or hosting assumptions.
 
 ## Start a project
@@ -31,7 +31,7 @@ yarn dlx @slicemedia/create-devkit@next [directory]
 
 The wizard asks which package manager the generated project should use and whether it should
 install dependencies immediately. It adds only selected capabilities. Optional integration files
-are examples and remain disconnected from `src/main.ts` until a human or agent deliberately
+are examples and remain disconnected from public addon/project entries until a human or agent deliberately
 composes them.
 
 For an existing codebase, `@slicemedia/devkit` is the optional convenience entry. Direct core and
@@ -59,7 +59,8 @@ createResponsiveSwiper({ target: "[data-wft-slider]", observeMutations: true }).
 ```
 
 In a generated project, use the selected manager's `dev` script for the CORS-enabled local server
-and its `build` script for the site-owned bundle. Hosting stays project-owned. Teams choosing
+and its `build` script for separate files at `dist/addons/<name>.js`. Load only the addon scripts
+needed on each Webflow page. Optional project scripts are separate outputs. Hosting stays project-owned. Teams choosing
 DigitalOcean Spaces can install the independent `@slicemedia/spaces-deployer` package and use its
 reviewed plan/apply workflow. The generated Spaces integration requires Spaces Deployer 0.2 or
 newer and selects stable URLs with scoped CDN invalidation. Supply a dedicated project prefix,
@@ -90,6 +91,12 @@ automatic license.
 Maintained releases target Node 22.13+ and Node 24. Core browser output is platform-neutral. The
 CLI and wizard are continuously checked on Linux and Windows; hosting and account-specific shell
 automation remain outside DevKit.
+
+Project workflows are documented in [generated Webflow setup guides](docs/setup-guides.md),
+[opt-in runtime helpers and window callbacks](docs/runtime-helpers.md), and
+[private production sourcemaps](docs/private-sourcemaps.md). The complete
+[counter example](docs/examples/on-demand-counter/README.md) stays in repository documentation
+and is not installed in generated projects.
 
 ## Versioning and maintenance
 

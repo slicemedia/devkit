@@ -36,6 +36,13 @@ export interface AddonDependency {
   readonly optional?: boolean;
 }
 
+export interface AddonUsage {
+  readonly setup: readonly string[];
+  /** Neutral markup showing the contract, never copied project markup. */
+  readonly markup?: string;
+  readonly notes?: readonly string[];
+}
+
 export type AddonStatus =
   "idle" | "initializing" | "ready" | "refreshing" | "destroying" | "destroyed" | "error";
 
@@ -78,6 +85,7 @@ export interface AddonMetadata<Options extends object> {
   readonly placement: AddonPlacement;
   readonly entry: string;
   readonly lifecycle: readonly AddonLifecycleMethod[];
+  readonly usage?: AddonUsage;
 }
 
 export interface AddonDefinition<
@@ -105,6 +113,7 @@ export interface AddonDefinitionInput<
   readonly placement?: AddonPlacement;
   readonly entry: string;
   readonly lifecycle?: readonly AddonLifecycleMethod[];
+  readonly usage?: AddonUsage;
   setup(
     context: AddonSetupContext<Options, Events>,
   ): MaybePromise<AddonLifecycleHooks<Options, State>>;
@@ -125,10 +134,17 @@ export interface AddonOptionsChange<Options extends object> {
   readonly current: Readonly<Options>;
 }
 
+export interface AddonLifecycleEvent {
+  readonly status: AddonStatus;
+}
+
 export type AddonInstanceEventMap<Options extends object, Events extends object> = Events & {
   readonly status: AddonStatusChange;
   readonly error: AddonErrorEvent;
   readonly options: AddonOptionsChange<Options>;
+  readonly init: AddonLifecycleEvent;
+  readonly refresh: AddonLifecycleEvent;
+  readonly destroy: AddonLifecycleEvent;
 };
 
 export interface AddonInstance<
