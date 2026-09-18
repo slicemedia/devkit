@@ -13,6 +13,11 @@ export interface RuntimeAddonRegistration<Value = unknown> {
 
 export type RuntimeQueueTask = (runtime: DevKitRuntime) => MaybePromise<void>;
 
+export type RuntimeReadyCallback<Value = unknown> = (
+  addon: Value,
+  runtime: DevKitRuntime,
+) => MaybePromise<void>;
+
 export type RuntimeQueueItem =
   | RuntimeQueueTask
   | { readonly type: "configure"; readonly config: DevKitConfig }
@@ -42,6 +47,8 @@ export interface RuntimeEventMap {
 }
 
 export interface DevKitRuntime {
+  /** Registered addon APIs are also available by name to plain browser scripts. */
+  readonly [name: string]: unknown;
   readonly kind: "slicemedia-devkit-runtime";
   readonly version: string;
   readonly config: DevKitConfig;
@@ -49,9 +56,14 @@ export interface DevKitRuntime {
   readonly ready: Promise<void>;
   readonly conflicts: readonly RuntimeVersionConflict[];
   readonly addons: readonly RuntimeAddonRegistration[];
+  /** Includes pending and failed instances without making their APIs ready. */
+  readonly inspectionAddons: readonly RuntimeAddonRegistration[];
+  trackAddon<Value>(registration: RuntimeAddonRegistration<Value>): RuntimeAddonRegistration<Value>;
   configure(config: DevKitConfig): DevKitConfig;
   registerAddon<Value>(registration: RuntimeAddonRegistration<Value>): "registered" | "reused";
   getAddon<Value = unknown>(name: string): RuntimeAddonRegistration<Value> | undefined;
+  /** One-shot, cancellable callback for an API registered by the project after initialization. */
+  whenReady<Value = unknown>(name: string, callback: RuntimeReadyCallback<Value>): () => void;
   on<EventName extends keyof RuntimeEventMap>(
     event: EventName,
     listener: (payload: RuntimeEventMap[EventName]) => void,
@@ -171,6 +183,7 @@ class RuntimeQueueImplementation implements DevKitRuntimeQueue {
 }
 
 class DevKitRuntimeImplementation implements DevKitRuntime {
+  readonly [name: string]: unknown;
   readonly kind = "slicemedia-devkit-runtime" as const;
   readonly version: string;
   readonly queue: DevKitRuntimeQueue;
@@ -178,6 +191,7 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
   private currentConfig: DevKitConfig;
   private readonly conflictList: RuntimeVersionConflict[] = [];
   private readonly addonMap = new Map<string, RuntimeAddonRegistration>();
+  private readonly inspectionMap = new Map<string, RuntimeAddonRegistration>();
   private readonly emitter: Emitter<RuntimeEventMap> = createEmitter<RuntimeEventMap>();
 
   constructor(version: string, config: DevKitConfig) {
@@ -205,6 +219,31 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
     return Object.freeze([...this.addonMap.values()]);
   }
 
+  get inspectionAddons(): readonly RuntimeAddonRegistration[] {
+    return Object.freeze([...new Map([...this.inspectionMap, ...this.addonMap]).values()]);
+  }
+
+  trackAddon<Value>(
+    registration: RuntimeAddonRegistration<Value>,
+  ): RuntimeAddonRegistration<Value> {
+    if (!registration.name.trim() || !registration.version.trim())
+      throw new TypeError("Inspection registrations require a name and version.");
+    const existing =
+      this.addonMap.get(registration.name) ?? this.inspectionMap.get(registration.name);
+    if (existing) {
+      if (existing.version !== registration.version)
+        throw new Error(
+          `Addon "${registration.name}" is already tracked at version ${existing.version}.`,
+        );
+      return existing as RuntimeAddonRegistration<Value>;
+    }
+    if (registration.name in this || ["then", "catch", "finally"].includes(registration.name))
+      throw new TypeError(`Addon name "${registration.name}" is reserved by the runtime.`);
+    const record = Object.freeze({ ...registration });
+    this.inspectionMap.set(registration.name, record);
+    return record;
+  }
+
   configure(config: DevKitConfig): DevKitConfig {
     const previous = this.currentConfig;
     this.currentConfig = Object.freeze({ ...previous, ...config });
@@ -226,6 +265,15 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
     }
 
     const normalized = Object.freeze({ ...registration });
+    if (registration.name in this || ["then", "catch", "finally"].includes(registration.name)) {
+      throw new TypeError(`Addon name "${registration.name}" is reserved by the runtime.`);
+    }
+    Object.defineProperty(this, registration.name, {
+      value: registration.value,
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
     this.addonMap.set(registration.name, normalized);
     this.emitter.emit("registered", normalized);
     return "registered";
@@ -233,6 +281,30 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
 
   getAddon<Value = unknown>(name: string): RuntimeAddonRegistration<Value> | undefined {
     return this.addonMap.get(name) as RuntimeAddonRegistration<Value> | undefined;
+  }
+
+  whenReady<Value = unknown>(name: string, callback: RuntimeReadyCallback<Value>): () => void {
+    if (name.trim() === "" || typeof callback !== "function") {
+      throw new TypeError("whenReady requires an addon name and callback.");
+    }
+    let active = true;
+    let unsubscribe = (): void => {};
+    const deliver = (registration: RuntimeAddonRegistration): void => {
+      if (!active || registration.name !== name) return;
+      unsubscribe();
+      this.queue.push(async () => {
+        if (!active) return;
+        active = false;
+        await callback(registration.value as Value, this);
+      });
+    };
+    const existing = this.getAddon(name);
+    if (existing) deliver(existing);
+    else unsubscribe = this.on("registered", deliver);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }
 
   on<EventName extends keyof RuntimeEventMap>(

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { CORE_VERSION } from "../packages/core/src/version.js";
 import {
   DEFAULT_DEVKIT_VERSION_RANGE,
+  DEFAULT_DEVTOOLS_VERSION_RANGE,
   DEVKIT_PACKAGE_VERSION,
   EXTERNAL_PRODUCT_VERSION_RANGES,
 } from "../packages/create-devkit/src/versions.generated.js";
@@ -85,5 +86,26 @@ describe("release version consistency", () => {
       packageName: "@slicemedia/spaces-deployer",
       range: EXTERNAL_PRODUCT_VERSION_RANGES.spacesDeployer,
     });
+  });
+
+  it("keeps DevTools optional and outside the fixed release group", async () => {
+    const [devtools, compatibility, changesets, ...consumers] = await Promise.all([
+      json("packages/devtools/package.json"),
+      json("config/devtools-compatibility.json"),
+      json(".changeset/config.json"),
+      ...packageDirectories.map((directory) => json(`${directory}/package.json`)),
+    ]);
+    expect(devtools?.name).toBe("@slicemedia/devtools");
+    expect(compatibility).toMatchObject({
+      packageName: "@slicemedia/devtools",
+      range: DEFAULT_DEVTOOLS_VERSION_RANGE,
+    });
+    expect((changesets?.fixed as string[][]).flat()).not.toContain("@slicemedia/devtools");
+    expect((changesets?.linked as string[][]).flat()).not.toContain("@slicemedia/devtools");
+    for (const consumer of consumers) {
+      expect(consumer.dependencies ?? {}).not.toHaveProperty("@slicemedia/devtools");
+      expect(consumer.optionalDependencies ?? {}).not.toHaveProperty("@slicemedia/devtools");
+      expect(consumer.exports ?? {}).not.toHaveProperty("./devtools");
+    }
   });
 });

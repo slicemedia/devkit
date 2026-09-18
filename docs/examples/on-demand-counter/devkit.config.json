@@ -1,0 +1,9 @@
+{
+  "entries": [
+    {
+      "name": "counter",
+      "input": "src/addons/counter.ts",
+      "definition": { "module": "src/counter.ts", "export": "counterDefinition" }
+    }
+  ]
+}

@@ -1,12 +1,19 @@
-import { access } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ViteDevServer } from "vite";
 
 import { getIntegerOption, getOption, getOptions, hasFlag, parseArgs } from "./args.js";
 import { buildSiteBundle, type BuildSiteBundleOptions } from "./build.js";
+import { buildScripts } from "./scripts-build.js";
 import { startDevServer, type DevServerOptions } from "./dev.js";
 import { discoverAddonEntries } from "./discovery.js";
+import {
+  documentEntry,
+  renderCatalog,
+  renderSetupGuide,
+  type DocumentationOptions,
+} from "./documentation.js";
 import { consoleWriter, writeResult, type OutputWriter } from "./output.js";
 import { forbiddenTermsFromEnvironment, sanitizeTree } from "./sanitize.js";
 import type { CommandResult } from "./types.js";
@@ -104,9 +111,10 @@ function helpResult(): CommandResult<readonly string[]> {
     data: [
       "doctor",
       "sanitize [--git-history]",
-      "catalog",
-      "explain <addon>",
-      "build [--entry src/main.ts] [--out-dir dist] [--script-file project.js] [--css-file project.css]",
+      "catalog [--out docs/addons.md] [--manifest dist/webflow-scripts.json] [--public-base-url <url>]",
+      "explain <addon> [--out docs/setup.md] [--public-base-url <url>] [--dev-url <url>] [--hmr=false]",
+      "build [--out-dir dist] [--sourcemap] — build every public addon and project entry separately",
+      "build --entry <file> [--out-dir dist] [--script-file <name.js>] [--css-file <name.css>] [--sourcemap] — explicit single entry",
       "dev [--host 127.0.0.1] [--port 5173]",
       "webflow components --site <id>",
       "webflow scan (--site <id> | --url <url>)",
@@ -130,15 +138,39 @@ async function runDoctor(root: string, env: NodeJS.ProcessEnv): Promise<CommandR
     detail: path.join(root, "package.json"),
   });
   checks.push({
-    name: "project-entry",
-    status: (await exists(path.join(root, "src/main.ts"))) ? "pass" : "warn",
-    detail: path.join(root, "src/main.ts"),
+    name: "browser-entries",
+    status:
+      (await exists(path.join(root, "src/addons"))) ||
+      (await exists(path.join(root, "src/projects"))) ||
+      (await exists(path.join(root, "devkit.config.json")))
+        ? "pass"
+        : "warn",
+    detail: "Public entries in src/addons/, src/projects/, or devkit.config.json",
   });
   checks.push({
     name: "webflow-auth",
     status: hasToken(env) ? "pass" : "warn",
     detail: hasToken(env) ? "Configured" : "Not configured; required only for API commands",
   });
+  try {
+    const entries = await discoverAddonEntries(root);
+    const missing = entries.filter(
+      (entry) => entry.kind !== "project" && !entry.structure && entry.scope !== "global",
+    );
+    checks.push({
+      name: "inspection-contracts",
+      status: missing.length ? "warn" : "pass",
+      detail: missing.length
+        ? `No component structure or global scope declared: ${missing.map((entry) => entry.name).join(", ")}. Add inert definition metadata for DevTools and explain/catalog.`
+        : "Discovered addons declare component structure or global scope.",
+    });
+  } catch (error) {
+    checks.push({
+      name: "inspection-contracts",
+      status: "warn",
+      detail: `Cannot read inspection metadata: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
   const ok = !checks.some((check) => check.status === "fail");
   return {
     ok,
@@ -180,11 +212,28 @@ async function runSanitize(
 async function runCatalog(args: ReturnType<typeof parseArgs>, cwd: string): Promise<CommandResult> {
   const root = path.resolve(cwd, getOption(args, "root") ?? ".");
   const entries = await discoverAddonEntries(root);
+  const documented = entries.map((entry) =>
+    documentEntry(
+      { ...entry, input: normalizeRelative(root, entry.input) },
+      documentationOptions(args),
+    ),
+  );
+  const text = renderCatalog(documented);
+  const output = getOption(args, "out");
+  if (output) await writeDocument(root, output, text);
+  const manifest = getOption(args, "manifest");
+  if (manifest)
+    await writeDocument(
+      root,
+      manifest,
+      `${JSON.stringify({ schemaVersion: 1, entries: documented }, null, 2)}\n`,
+    );
   return {
     ok: true,
     command: "catalog",
     summary: `Discovered ${entries.length} addon(s).`,
-    data: entries.map((entry) => ({ ...entry, input: normalizeRelative(root, entry.input) })),
+    data: documented,
+    text,
   };
 }
 
@@ -197,12 +246,48 @@ async function runExplain(
   const root = path.resolve(cwd, getOption(args, "root") ?? ".");
   const entry = (await discoverAddonEntries(root)).find((candidate) => candidate.name === name);
   if (entry === undefined) throw new Error(`Unknown addon ${JSON.stringify(name)}.`);
+  const documented = documentEntry(
+    { ...entry, input: normalizeRelative(root, entry.input) },
+    documentationOptions(args),
+  );
+  const text = renderSetupGuide(documented);
+  const output = getOption(args, "out");
+  if (output) await writeDocument(root, output, text);
   return {
     ok: true,
     command: "explain",
     summary: `${entry.name}: ${entry.description}`,
-    data: { ...entry, input: normalizeRelative(root, entry.input) },
+    data: documented,
+    text,
   };
+}
+
+function documentationOptions(args: ReturnType<typeof parseArgs>): DocumentationOptions {
+  const devUrl = getOption(args, "dev-url");
+  const publicBaseUrl = getOption(args, "public-base-url");
+  const input = getOption(args, "entry");
+  const scriptFile = getOption(args, "script-file");
+  const cssFile = getOption(args, "css-file");
+  return {
+    ...(devUrl ? { devUrl } : {}),
+    ...(publicBaseUrl ? { publicBaseUrl } : {}),
+    ...(args.options.has("hmr") ? { hmr: hasFlag(args, "hmr") } : {}),
+    ...(input || scriptFile || cssFile
+      ? {
+          bundle: {
+            input: input ?? "src/main.ts",
+            scriptFile: scriptFile ?? "project.js",
+            ...(cssFile ? { cssFile } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+async function writeDocument(root: string, output: string, contents: string): Promise<void> {
+  const target = path.resolve(root, output);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, contents);
 }
 
 async function runBuild(
@@ -214,19 +299,38 @@ async function runBuild(
   const outDir = getOption(args, "out-dir");
   const scriptFileName = getOption(args, "script-file");
   const cssFileName = getOption(args, "css-file");
+  if (!entry) {
+    if (scriptFileName || cssFileName)
+      throw new Error(
+        "--script-file and --css-file require an explicit --entry. Use per-entry bundle paths for multiple scripts.",
+      );
+    const result = await buildScripts({
+      root,
+      ...(outDir ? { outDir } : {}),
+      ...(hasFlag(args, "sourcemap") ? { sourcemap: true } : {}),
+    });
+    const maps = result.entries.flatMap((script) => script.sourceMapPaths ?? []);
+    return {
+      ok: true,
+      command: "build",
+      summary: `Built ${result.entries.length} standalone script(s).${maps.length ? ` Private sourcemaps: ${maps.join(", ")}` : ""}`,
+      data: result,
+    };
+  }
   const buildOptions: BuildSiteBundleOptions = {
     root,
     ...(entry === undefined ? {} : { entry }),
     ...(outDir === undefined ? {} : { outDir }),
     ...(scriptFileName === undefined ? {} : { scriptFileName }),
     ...(cssFileName === undefined ? {} : { cssFileName }),
+    ...(hasFlag(args, "sourcemap") ? { sourcemap: true } : {}),
   };
   const result = await context.buildBundle(buildOptions);
   const files = [result.scriptPath, ...(result.cssPath === undefined ? [] : [result.cssPath])];
   return {
     ok: true,
     command: "build",
-    summary: `Built ${files.length === 1 ? "one site bundle" : "one site bundle and CSS"}.`,
+    summary: `Built ${files.length === 1 ? "one standalone script" : "one standalone script and CSS"}.${result.sourceMapPaths?.length ? ` Private sourcemaps: ${result.sourceMapPaths.join(", ")}` : ""}`,
     data: result,
   };
 }

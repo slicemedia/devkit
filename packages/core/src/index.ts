@@ -16,7 +16,18 @@ export { onDomReady, whenDomReady } from "./dom.js";
 export { createEmitter } from "./emitter.js";
 export { DevKitAggregateError } from "./errors.js";
 export { installDevKitRuntime } from "./runtime.js";
+export { initializeAddon } from "./register-addon.js";
+export type {
+  AddonCondition,
+  AddonValueConstraints,
+  AddonInspectionContext,
+  AddonDiagnostics,
+  AddonDiagnostic,
+  AddonDependencyDiagnostic,
+} from "./inspection-types.js";
 export { getViewportSnapshot, observeViewport } from "./viewport.js";
+export { observeElementVisibility, observeViewportEntryOnce } from "./visibility.js";
+export { createLayoutRefreshGuard } from "./layout-refresh.js";
 export { CORE_VERSION } from "./version.js";
 
 export type { AssetType, LoadAssetOptions, LoadedAssetElement } from "./assets.js";
@@ -43,10 +54,13 @@ export type {
   RuntimeInstallResult,
   RuntimeQueueItem,
   RuntimeQueueTask,
+  RuntimeReadyCallback,
   RuntimeVersionConflict,
 } from "./runtime.js";
 export type {
   AddonAttribute,
+  AddonStructureAttribute,
+  AddonStructureNode,
   AddonDefinition,
   AddonDefinitionInput,
   AddonDependency,
@@ -57,6 +71,7 @@ export type {
   AddonInstance,
   AddonInstanceEventMap,
   AddonLifecycleHooks,
+  AddonLifecycleEvent,
   AddonLifecycleMethod,
   AddonMetadata,
   AddonOptionMetadata,
@@ -65,9 +80,12 @@ export type {
   AddonSetupContext,
   AddonStatus,
   AddonStatusChange,
+  AddonUsage,
   AddonValueType,
   Cleanup,
   DataWftAttribute,
   MaybePromise,
 } from "./types.js";
 export type { ViewportObserverOptions, ViewportSnapshot } from "./viewport.js";
+export type { ElementVisibility, ElementVisibilityOptions } from "./visibility.js";
+export type { LayoutRefreshGuard, LayoutRefreshOptions } from "./layout-refresh.js";

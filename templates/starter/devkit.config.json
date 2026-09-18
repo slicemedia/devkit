@@ -2,13 +2,30 @@
   "entries": [
     {
       "name": "project",
+      "kind": "project",
       "input": "src/main.ts",
       "version": "0.1.0",
-      "description": "Project-owned Webflow browser entry.",
+      "description": "Optional project-wide browser entry; addons build independently.",
       "placement": "body-end",
       "dependencies": [],
       "attributes": [],
       "scriptAttributes": {},
+      "bundle": {
+        "input": "src/main.ts",
+        "scriptFile": "projects/project.js",
+        "cssFile": "projects/project.css"
+      },
+      "usage": {
+        "setup": [
+          "Author the required markup and data-wft-* hooks in Webflow.",
+          "Create standalone browser entries under src/addons/ and document their contracts.",
+          "Use src/project.ts only for deliberately shared project behavior; it is optional.",
+          "Run the local dev server and test only the scripts needed on an approved Webflow testing page."
+        ],
+        "notes": [
+          "The starter has no feature behavior. Remove this entry if no project-wide script is needed; addon discovery remains active."
+        ]
+      },
       "api": {
         "entry": "webflow-project",
         "capabilities": []

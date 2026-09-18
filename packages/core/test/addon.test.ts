@@ -114,6 +114,10 @@ describe("addon lifecycle", () => {
     const instance = createAddon(definition, { amount: 2 }, { window, document });
     const ticks: number[] = [];
     instance.on("tick", (value) => ticks.push(value));
+    const completed: string[] = [];
+    for (const event of ["init", "refresh", "destroy"] as const) {
+      instance.on(event, ({ status }) => completed.push(`${event}:${status}`));
+    }
 
     await Promise.all([instance.init(), instance.init()]);
     expect(init).toHaveBeenCalledOnce();
@@ -141,6 +145,7 @@ describe("addon lifecycle", () => {
     expect(init).toHaveBeenCalledTimes(2);
     expect(context?.signal).not.toBe(firstSignal);
     expect(context?.signal.aborted).toBe(false);
+    expect(completed).toEqual(["init:ready", "refresh:ready", "destroy:destroyed", "init:ready"]);
   });
 
   it("rolls back partial initialization and reports refresh-before-init", async () => {
@@ -163,12 +168,15 @@ describe("addon lifecycle", () => {
       },
     });
     const instance = createAddon(definition, {}, { window, document });
+    const initialized = vi.fn();
+    instance.on("init", initialized);
 
     await expect(instance.refresh()).rejects.toBeInstanceOf(AddonLifecycleError);
     await expect(instance.init()).rejects.toThrow("expected init failure");
     expect(cleanup).toHaveBeenCalledOnce();
     expect(destroy).toHaveBeenCalledOnce();
     expect(instance.status).toBe("error");
+    expect(initialized).not.toHaveBeenCalled();
     await instance.destroy();
     expect(cleanup).toHaveBeenCalledOnce();
   });

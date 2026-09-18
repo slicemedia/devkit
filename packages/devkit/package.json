@@ -42,7 +42,7 @@
     "node": ">=22.13.0 <23 || >=24.0.0 <25"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/prepare-build.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
