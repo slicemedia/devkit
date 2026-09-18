@@ -10,6 +10,7 @@ import { buildSiteBundle } from "./build.js";
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -18,6 +19,31 @@ afterEach(async () => {
 });
 
 describe("explicit single-entry builds", () => {
+  it("removes development-only DevTools and still supports an explicit inspector IIFE", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const root = await temporaryProject();
+    const devtoolsEntry = path.resolve(import.meta.dirname, "../../devtools/src/index.ts");
+    const source = (condition: string) =>
+      `import { createDevTools } from ${JSON.stringify(devtoolsEntry)};\n` +
+      `if (${condition}) createDevTools({ addons: [] }).init();\n` +
+      `document.documentElement.dataset.wftReady = "true";\n`;
+    await writeFile(path.join(root, "src/main.ts"), source("import.meta.env.DEV"));
+    const production = await buildSiteBundle({ root });
+    const productionCode = await readFile(production.scriptPath, "utf8");
+    expect(productionCode).toContain("wftReady");
+    expect(productionCode).not.toContain("data-wft-devtools");
+    expect(productionCode).not.toContain("Registered addons");
+
+    await writeFile(path.join(root, "src/main.ts"), source("true"));
+    const debug = await buildSiteBundle({ root });
+    const debugCode = await readFile(debug.scriptPath, "utf8");
+    expect(debugCode).toContain("data-wft-devtools");
+    expect(debugCode).toContain("Registered addons");
+    expect(debugCode).toContain("Lucide icons");
+    expect(debugCode).toContain("Cole Bemis");
+    expect(await readdir(path.join(root, "dist"))).toEqual(["project.js"]);
+  });
+
   it("emits one ES2018 IIFE and optional CSS for the selected entry", async () => {
     const root = await temporaryProject();
     await writeFile(

@@ -28,9 +28,11 @@ const npmInstall =
 const npmVersionProof = 'test "$(npm --version)" = "11.19.0"';
 const reviewedNpmPathProof =
   'set -euo pipefail\nnpm_global_prefix="$(npm prefix -g)"\nif [[ "$npm_global_prefix" != /* || "$npm_global_prefix" == *:* || "$npm_global_prefix" == *$\'\\n\'* || "$npm_global_prefix" == *$\'\\r\'* ]]; then\n  echo "npm global prefix is not a safe absolute PATH entry" >&2\n  exit 1\nfi\nnpm_global_bin="${npm_global_prefix%/}/bin"\nif [[ ! -d "$npm_global_bin" || ! -x "$npm_global_bin/npm" ]]; then\n  echo "reviewed npm executable was not found in the global npm bin directory" >&2\n  exit 1\nfi\nexport PATH="$npm_global_bin:$PATH"\nif [[ "$(command -v npm)" != "$npm_global_bin/npm" || "$(npm --version)" != "11.19.0" ]]; then\n  echo "reviewed npm 11.19.0 is not first on PATH" >&2\n  exit 1\nfi\nif [[ -z "${GITHUB_PATH:-}" || "$GITHUB_PATH" != /* || "$GITHUB_PATH" == *$\'\\n\'* || "$GITHUB_PATH" == *$\'\\r\'* ]]; then\n  echo "GITHUB_PATH is not a safe absolute command-file path" >&2\n  exit 1\nfi\nprintf \'%s\\n\' "$npm_global_bin" >> "$GITHUB_PATH"\n';
-const artifactName = "devkit-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}";
+const artifactName =
+  "${{ inputs.release_target }}-npm-${{ inputs.release_commit }}-${{ github.run_attempt }}";
 const releaseCommitEnvironment = {
   SLICEMEDIA_RELEASE_COMMIT: "${{ inputs.release_commit }}",
+  SLICEMEDIA_RELEASE_TARGET: "${{ inputs.release_target }}",
 };
 const checkoutStep = {
   uses: checkoutAction,
@@ -46,6 +48,13 @@ const expectedWorkflow = {
           description: "Full 40-character main commit to publish",
           required: true,
           type: "string",
+        },
+        release_target: {
+          description: "Package family to publish independently",
+          required: true,
+          default: "devkit",
+          type: "choice",
+          options: ["devkit", "devtools"],
         },
       },
     },
@@ -154,6 +163,7 @@ const expectedWorkflow = {
             GITHUB_REPOSITORY_VISIBILITY: "${{ github.event.repository.visibility }}",
             SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED: "${{ vars.SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED }}",
             SLICEMEDIA_RELEASE_COMMIT: "${{ inputs.release_commit }}",
+            SLICEMEDIA_RELEASE_TARGET: "${{ inputs.release_target }}",
             SLICEMEDIA_RELEASE_ENVIRONMENT: "npm-next",
           },
         },
@@ -169,6 +179,7 @@ const expectedWorkflow = {
             GITHUB_REPOSITORY_VISIBILITY: "${{ github.event.repository.visibility }}",
             SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED: "${{ vars.SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED }}",
             SLICEMEDIA_RELEASE_COMMIT: "${{ inputs.release_commit }}",
+            SLICEMEDIA_RELEASE_TARGET: "${{ inputs.release_target }}",
             SLICEMEDIA_RELEASE_ENVIRONMENT: "npm-next",
           },
         },
@@ -201,6 +212,7 @@ const expectedWorkflow = {
           env: {
             GITHUB_REPOSITORY_VISIBILITY: "${{ github.event.repository.visibility }}",
             SLICEMEDIA_RELEASE_COMMIT: "${{ inputs.release_commit }}",
+            SLICEMEDIA_RELEASE_TARGET: "${{ inputs.release_target }}",
           },
         },
       ],

@@ -87,10 +87,19 @@ release gates and must not be published implicitly by a DevKit release.
 The five DevKit packages are versioned together so one DevKit version selects compatible
 convenience, core, addon, CLI, and creator releases.
 
+`@slicemedia/devtools` is independently versioned outside that fixed group. It uses the same
+protected publication workflow with `release_target=devtools`; `release_target=devkit` remains the
+default and publishes only the fixed family. There is no implicit combined release. Publish and
+verify the required DevKit core version first, then dispatch DevTools from the same current main
+commit. DevTools preparation and publication check that the minimum compatible core version is
+already on npm and exposes the inspection API and its declarations. Future DevTools-only changes
+can release without republishing DevKit. Update `config/devtools-compatibility.json` when changing
+the version line supported by the project creator.
+
 ## First-package bootstrap
 
 npm can attach a trusted publisher only after a package exists in the registry. For each of the
-five package names, the one-time bootstrap operation publishes a reviewed, minimal identity archive
+five package names and the independent DevTools name, the one-time bootstrap operation publishes a reviewed, minimal identity archive
 with public access as `0.0.0-bootstrap.0` under the non-default `bootstrap` tag. A bootstrap archive contains only the
 package identity, license, repository metadata, and an explanatory README; it contains no DevKit
 runtime, executable, install script, dependency, or credential. Inspect its dry-run and tarball
@@ -108,11 +117,11 @@ GitHub OIDC trusted publishing; they do not use a stored npm token.
 The separate `Publish npm prerelease` workflow fails closed until all of these reviewed conditions
 are complete:
 
-1. Keep the root workspace and generated starter explicitly private, while each of the five
+1. Keep the root workspace and generated starter explicitly private, while each selected
    publishable package manifests explicitly sets `private` to `false`. Do not remove the field: the
    publication contract requires explicit public intent.
 2. Make the repository public, complete the one-time bootstrap above, and configure this exact
-   workflow as the npm trusted publisher for all five packages with the `npm publish` action
+   workflow as the npm trusted publisher for every selected package with the `npm publish` action
    explicitly allowed.
 3. Keep the `slicemedia` npm organization protected by enforced two-factor authentication.
 4. Keep the GitHub `release-sanitize` environment restricted to protected `main` and store the
@@ -120,16 +129,18 @@ are complete:
 5. Keep the GitHub `npm-next` environment restricted to protected `main` with required approval.
 6. Set the repository variable `SLICEMEDIA_NPM_PUBLISH_NEXT_ENABLED=true` only for an approved
    release.
-7. Dispatch the workflow with the full 40-character commit SHA currently at `origin/main`.
+7. Dispatch the workflow with the full 40-character commit SHA currently at `origin/main` and
+   `release_target=devkit` or `release_target=devtools`.
 
 The workflow separates authority into three jobs. The preparation job has no OIDC permission and
 uses only the `release-sanitize` environment. Before dependency installation or any checked-out
 repository script runs, a dependency-free check rejects npm token, registry, and user-configuration
 overrides and proves that the requested commit, event commit, checkout, and live remote `main` tip
 are identical. It requires the private release denylist, runs the complete project and real-registry
-candidate matrices, packs the fixed package family with pinned pnpm, and sanitizes source, Git
-history, generated output, and the resulting tarballs. It uploads only five immutable tarballs plus
-a short commit-, integrity-, and file-tree-bound receipt. The denylist secret is never added to that
+candidate matrices, packs the selected target with pinned pnpm, and sanitizes source, Git
+history, generated output, and the resulting tarballs. It uploads only the five DevKit tarballs or
+the single DevTools tarball, plus a schema-2 receipt bound to the target, commit, integrity, and
+file tree. The artifact name also includes the target. The denylist secret is never added to that
 artifact, the `npm-next` publication job, or any later job.
 
 Only the minimal publication job enters the protected `npm-next` environment and receives GitHub

@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import semver from "semver";
+import { JSDOM } from "jsdom";
 
 const executeFile = promisify(execFile);
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -29,10 +30,11 @@ const devkitPackages = [
   { id: "addon", name: "@slicemedia/devkit-addon", directory: "packages/addon" },
   { id: "cli", name: "@slicemedia/devkit-cli", directory: "packages/cli" },
   { id: "creator", name: "@slicemedia/create-devkit", directory: "packages/create-devkit" },
+  { id: "devtools", name: "@slicemedia/devtools", directory: "packages/devtools" },
 ];
 
 const managers = ["pnpm", "npm", "yarn"];
-const capabilities = ["slider", "animations", "tooltips", "digitalocean-spaces"];
+const capabilities = ["slider", "animations", "tooltips", "digitalocean-spaces", "devtools"];
 const agentTargets = ["codex", "claude", "cursor", "copilot", "webflow"];
 const variants = [
   { id: "neutral", capabilities: [], agentTargets: [] },
@@ -46,6 +48,7 @@ const variants = [
 ];
 
 const capabilityIntegrations = {
+  devtools: "src/addons/devtools.ts",
   slider: "src/integrations/slider.ts",
   animations: "src/integrations/animations.ts",
   tooltips: "src/integrations/tooltips.ts",
@@ -467,6 +470,30 @@ async function verifyPackedMetaPackage(runnerDirectory) {
     if ("createExampleAddon" in root || "createExampleAddon" in addon) {
       throw new Error("DevKit convenience entry leaked the optional addon example.");
     }
+    if ("createDevTools" in root) {
+      throw new Error("DevKit root leaked the optional inspector.");
+    }
+    const devtools = await import("@slicemedia/devtools");
+    if (typeof devtools.createDevTools !== "function" || typeof devtools.inspectDevKit !== "function") {
+      throw new Error("Optional DevTools package is unavailable.");
+    }
+    devtools.createDevTools({ addons: [] }).destroy();
+    const { readFile } = await import("node:fs/promises");
+    const browserFile = await readFile(new URL(import.meta.resolve("@slicemedia/devtools/devtools.global.js")), "utf8");
+    if (!browserFile.includes("DevKitDevTools") || browserFile.includes("import.meta.hot")) throw new Error("Standalone production inspector was not packed correctly.");
+    if (!browserFile.includes("Lucide icons") || !browserFile.includes("Cole Bemis")) throw new Error("Standalone browser artifact lost its icon license notices.");
+    const devtoolsManifest = JSON.parse(await readFile(new URL(import.meta.resolve("@slicemedia/devtools/package.json")), "utf8"));
+    const usage = await readFile(new URL("../docs/usage.md", import.meta.resolve("@slicemedia/devtools")), "utf8");
+    if (devtoolsManifest.name !== "@slicemedia/devtools" || !usage.includes("Activation and storage")) {
+      throw new Error("Independent DevTools metadata or package documentation is missing.");
+    }
+    for (const name of ["@slicemedia/devkit", "@slicemedia/devkit-core"]) {
+      const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.resolve(name)), "utf8"));
+      if (manifest.dependencies?.["@slicemedia/devtools"] || manifest.exports?.["./devtools"] || manifest.exports?.["./devtools.global.js"]) {
+        throw new Error("DevTools leaked into the core or convenience distribution.");
+      }
+    }
+    if (typeof root.initializeAddon !== "function") throw new Error("Inspection-aware initialization helper is missing.");
     if (globalThis.slicemediaDevKit !== undefined) {
       throw new Error("DevKit convenience entry installed a global runtime.");
     }
@@ -483,7 +510,7 @@ async function loadScaffoldProject(runnerDirectory) {
   return creator.scaffoldProject;
 }
 
-async function injectLocalTarballs(projectDirectory, tarballs) {
+async function injectLocalTarballs(projectDirectory, tarballs, manager) {
   const packagePath = join(projectDirectory, "package.json");
   const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
   for (const section of ["dependencies", "devDependencies"]) {
@@ -491,6 +518,17 @@ async function injectLocalTarballs(projectDirectory, tarballs) {
       const tarball = tarballs.get(name);
       if (tarball !== undefined) packageJson[section][name] = fileDependency(tarball);
     }
+  }
+  // Pin transitive candidates too: a file dependency at the project root does not guarantee
+  // that a nested semver dependency resolves to the same unpublished package archive.
+  if (manager === "pnpm") {
+    await writeWorkspaceOverrides(projectDirectory, tarballs);
+  } else {
+    const overrides = Object.fromEntries(
+      [...tarballs].map(([name, tarball]) => [name, fileDependency(tarball)]),
+    );
+    if (manager === "npm") packageJson.overrides = overrides;
+    else packageJson.resolutions = overrides;
   }
   await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
@@ -521,6 +559,11 @@ async function assertGeneratedProjectShape(
   assert(!main.includes("integrations/"), "Generated main entry auto-imports an integration.");
   assert(packageJson.dependencies["@slicemedia/devkit-core"], "Generated project omits core.");
   assert(packageJson.devDependencies["@slicemedia/devkit-cli"], "Generated project omits CLI.");
+  assert(
+    Boolean(packageJson.dependencies["@slicemedia/devtools"]) ===
+      selectedCapabilities.includes("devtools"),
+    "DevTools must be installed only when selected.",
+  );
   if (selectedAgentTargets.length > 0) {
     assert(packageJson.devDependencies["@slicemedia/agent-kit"], "Agent project omits Agent Kit.");
     assert(
@@ -588,7 +631,12 @@ function parseCommandResult(output, command) {
   return result;
 }
 
-async function exerciseProject(projectDirectory, manager, selectedAgentTargets) {
+async function exerciseProject(
+  projectDirectory,
+  manager,
+  selectedAgentTargets,
+  selectedCapabilities,
+) {
   await assertManagerVersion(manager, projectDirectory);
   const [installCommand, installArguments] = managerCommand(manager, "install");
   await run(installCommand, installArguments, { cwd: projectDirectory });
@@ -615,9 +663,38 @@ if (!runtime.getAddon("${name}")) runtime.registerAddon({ name: "${name}", versi
     await readFile(join(projectDirectory, "dist/webflow-scripts.json"), "utf8"),
   );
   assert(
-    buildManifest.entries.length === 3,
+    buildManifest.entries.length === (selectedCapabilities.includes("devtools") ? 4 : 3),
     "Build did not emit separate addon and project entries.",
   );
+  if (selectedCapabilities.includes("devtools")) {
+    const dom = new JSDOM("<!doctype html><html><body><main>Fixture</main></body></html>", {
+      url: "https://production.example.test/",
+      runScripts: "outside-only",
+    });
+    try {
+      const { window } = dom;
+      window.eval(await readFile(join(projectDirectory, "dist/addons/devtools.js"), "utf8"));
+      assert(window.DevKitDevTools?.enabled === false, "Hosted inspector activated on production.");
+      assert(window.localStorage.length === 0, "Dormant inspector wrote preferences.");
+      for (const name of ["fixture-first", "fixture-second"]) {
+        window.eval(await readFile(join(projectDirectory, `dist/addons/${name}.js`), "utf8"));
+      }
+      window.DevKitDevTools.enabled = true;
+      window.DevKitDevTools.open();
+      assert(
+        window.DevKitDevTools.getSnapshot()?.addons.length === 2,
+        "Hosted inspector did not discover independently loaded addon scripts.",
+      );
+      window.DevKitDevTools.destroy();
+    } finally {
+      dom.window.close();
+    }
+  } else {
+    await assertMissing(
+      join(projectDirectory, "dist/addons/devtools.js"),
+      "Unselected inspector was built.",
+    );
+  }
 
   if (selectedAgentTargets.length > 0) {
     const [command, args] = managerCommand(manager, "agents:generate");
@@ -704,8 +781,13 @@ async function main() {
           variant.capabilities,
           variant.agentTargets,
         );
-        await injectLocalTarballs(projectDirectory, allTarballs);
-        await exerciseProject(projectDirectory, manager, variant.agentTargets);
+        await injectLocalTarballs(projectDirectory, allTarballs, manager);
+        await exerciseProject(
+          projectDirectory,
+          manager,
+          variant.agentTargets,
+          variant.capabilities,
+        );
         log(`${manager}/${variant.id} passed`);
       }
     }

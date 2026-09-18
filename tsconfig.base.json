@@ -15,9 +15,11 @@
     "paths": {
       "@slicemedia/devkit": ["./packages/devkit/src/index.ts"],
       "@slicemedia/devkit/addon": ["./packages/devkit/src/addon.ts"],
+      "@slicemedia/devtools": ["./packages/devtools/src/index.ts"],
       "@slicemedia/devkit-addon": ["./packages/addon/src/index.ts"],
       "@slicemedia/devkit-addon/*": ["./packages/addon/src/*/index.ts"],
-      "@slicemedia/devkit-core": ["./packages/core/src/index.ts"]
+      "@slicemedia/devkit-core": ["./packages/core/src/index.ts"],
+      "@slicemedia/devkit-core/inspection": ["./packages/core/src/inspection.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

@@ -2,13 +2,18 @@
 
 Slice Media DevKit is AI-first development infrastructure for teams building with Webflow. It is a
 neutral starting point for small enhancements and large codebases alike: Webflow keeps ownership of
-editable layout, components, styles, CMS, forms, and content, while the addon scripts add only the
-interactive behavior Webflow does not provide.
+editable layout, components, styles, CMS, forms, and content, while addon scripts provide explicitly
+selected interactive behavior and custom animations on that markup.
 
 Under the hood, DevKit provides a typed browser lifecycle, an addon authoring API, a local
 development/build CLI, read-only Webflow inspection, and an interactive project wizard. Every
 public addon builds into its own standalone ES2018 IIFE plus optional CSS. Generated projects start without feature markup,
 selectors, integrations, or hosting assumptions.
+
+For custom animation work, prefer GSAP addons while keeping markup and base styles editable in
+Webflow. Follow an explicit user choice first; CSS is suitable for simple state effects, and native
+Interactions are suitable when straightforward motion benefits from Designer ownership. See
+[animation authoring](docs/animation-authoring.md) for the decision and lifecycle guidance.
 
 ## Start a project
 
@@ -42,6 +47,11 @@ import { createBreakpointService } from "@slicemedia/devkit";
 import { defineAddon } from "@slicemedia/devkit/addon";
 ```
 
+An optional [on-page DevTools inspector](packages/devtools/README.md) is available as the
+independently versioned `@slicemedia/devtools` package. Its floating button opens an
+addon list and a read-only attribute audit. Projects explicitly enable it and supply markup
+contracts for accurate missing-attribute checks.
+
 ```ts
 // Optional addon reference; never loaded by the package root.
 import { createExampleAddon } from "@slicemedia/devkit-addon/example";
@@ -73,6 +83,8 @@ release URLs remain available through the deployer's explicit `immutable` mode.
 
 - **Slice Media DevKit** — optional `@slicemedia/devkit` convenience entry, core lifecycle, addon
   API, local/read-only CLI, creator, and starter
+- **[Slice Media DevTools](packages/devtools/README.md)** — optional inspector with independent
+  releases, module imports, and a ready-made browser script for addon/CDN hosting
 - **[Slice Media Agent Kit](https://github.com/slicemedia/agent-kit)** — independently maintained,
   target-selective Codex, Claude, Cursor, Copilot, and Webflow instructions
 - **[Slice Media Swiper Adapter](https://github.com/slicemedia/swiper-adapter)** — optional

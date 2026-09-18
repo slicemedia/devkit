@@ -1,4 +1,9 @@
-import type { AddonEntry, ProjectBundle } from "./types.js";
+import type {
+  AddonEntry,
+  ConditionDocumentation,
+  ProjectBundle,
+  StructureDocumentation,
+} from "./types.js";
 
 export interface DocumentationOptions {
   readonly devUrl?: string;
@@ -78,6 +83,13 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
       : ["No additional setup steps documented."]),
   ];
   if (entry.usage?.markup) lines.push("", fence(entry.usage.markup, "html"));
+  if (entry.structure)
+    lines.push("", "## Markup structure", "", fence(renderStructure(entry), "text"));
+  if (entry.scope === "global")
+    lines.push(
+      "",
+      "Global service: no component root is required. Inspect runtime diagnostics for readiness.",
+    );
   lines.push("", "## Attributes", "");
   const details = new Map(entry.attributeDetails?.map((attribute) => [attribute.name, attribute]));
   for (const name of entry.attributes) {
@@ -85,6 +97,7 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
     lines.push(
       `- ${inline(name)}${detail?.required ? " (required)" : ""}${detail?.type ? ` — ${detail.type}` : ""}${detail?.description ? `: ${detail.description}` : ""}${detail?.values ? ` Values: ${detail.values.map(inline).join(", ")}.` : ""}${detail?.option ? ` Maps to option ${inline(detail.option)}.` : ""}`,
     );
+    if (detail) lines.push(...constraints(detail).map((constraint) => `  ${constraint}`));
   }
   if (entry.attributes.length === 0) lines.push("No attributes declared.");
   lines.push("", "## Options and defaults", "");
@@ -95,6 +108,7 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
     lines.push(
       `- ${inline(String(option.name))}${option.required ? " (required)" : ""}${typeof option.type === "string" ? ` — ${option.type}` : ""}${typeof option.description === "string" ? `: ${option.description}` : ""}`,
     );
+    lines.push(...constraints(option).map((constraint) => `  ${constraint}`));
   }
   lines.push(fence(JSON.stringify(entry.defaultOptions ?? {}, null, 2), "json"));
   lines.push("", "## Runtime API", "", fence(JSON.stringify(entry.api, null, 2), "json"));
@@ -106,6 +120,14 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
       ? entry.dependencies.map((name) => `- ${inline(name)}`)
       : ["No dependencies declared."]),
   );
+  for (const dependency of entry.dependencyDetails ?? []) {
+    const details = [
+      dependency.global ? `browser global ${inline(dependency.global)}` : undefined,
+      dependency.optional ? "optional" : "required",
+      dependency.when ? `when ${describeCondition(dependency.when)}` : undefined,
+    ].filter(Boolean);
+    lines.push(`- ${inline(dependency.name)}: ${details.join("; ")}.`);
+  }
   lines.push("", "## Local Webflow testing", "");
   if (entry.snippets.development) {
     lines.push(
@@ -140,6 +162,93 @@ export function renderSetupGuide(entry: DocumentedEntry): string {
   if (entry.usage?.notes?.length)
     lines.push("", "## Notes", "", ...entry.usage.notes.map((note) => `- ${note}`));
   return `${lines.join("\n")}\n`;
+}
+
+/** Render the same role hierarchy that the browser inspector validates. */
+function renderStructure(entry: DocumentedEntry): string {
+  const lines: string[] = [];
+  const details = new Map(entry.attributeDetails?.map((attribute) => [attribute.name, attribute]));
+  const ancestors = new Set<StructureDocumentation>();
+  const clean = (value: string): string => value.replace(/[\r\n\t]/gu, " ");
+  const visit = (
+    node: StructureDocumentation,
+    prefix: string,
+    last: boolean,
+    root: boolean,
+  ): void => {
+    if (ancestors.has(node)) throw new Error("Markup structure must be an acyclic tree.");
+    ancestors.add(node);
+    const selector =
+      node.selectorOption && typeof entry.defaultOptions?.[node.selectorOption] === "string"
+        ? (entry.defaultOptions[node.selectorOption] as string)
+        : node.selector;
+    const relationship = root
+      ? "root"
+      : node.relationship === "child"
+        ? "direct child"
+        : node.relationship === "self"
+          ? "on parent"
+          : node.relationship === "self-or-descendant"
+            ? "parent or descendant"
+            : "descendant";
+    const required = (node.min ?? ((node.required ?? !root) ? 1 : 0)) > 0;
+    const childPrefix = prefix + (root ? "" : last ? "   " : "│  ");
+    lines.push(
+      `${prefix}${root ? "" : last ? "└─ " : "├─ "}${clean(node.label)} · ${relationship} · ${required ? "required" : "optional"}`,
+    );
+    if (node.when) lines.push(`${childPrefix}   When: ${describeCondition(node.when)}`);
+    if (node.min !== undefined || node.max !== undefined)
+      lines.push(
+        `${childPrefix}   Matches per parent: ${node.min ?? (required ? 1 : 0)}${node.max === undefined ? " or more" : `–${node.max}`}`,
+      );
+    if (node.scopeSelector)
+      lines.push(`${childPrefix}   Shared scope: closest ${clean(node.scopeSelector)}`);
+    if (node.uniqueBy) lines.push(`${childPrefix}   Unique key: ${node.uniqueBy}`);
+    if (node.references)
+      lines.push(
+        `${childPrefix}   ${node.references.attribute} matches ${node.references.target}.${node.references.targetAttribute} within the same component`,
+      );
+    lines.push(
+      `${childPrefix}   ${clean(selector)}${node.selectorOption ? ` (option: ${clean(node.selectorOption)})` : ""}`,
+    );
+    for (const rule of node.attributes) {
+      const attribute = details.get(rule.name);
+      lines.push(
+        `${childPrefix}   ${clean(rule.name)} · ${(rule.required ?? attribute?.required ?? false) ? "required" : "optional"}${attribute?.type ? ` · ${attribute.type}` : ""}${rule.when ? ` · when ${describeCondition(rule.when)}` : ""}`,
+      );
+    }
+    const children = node.children ?? [];
+    children.forEach((child, index) =>
+      visit(child, childPrefix, index === children.length - 1, false),
+    );
+    ancestors.delete(node);
+  };
+  visit(entry.structure!, "", true, true);
+  return lines.join("\n");
+}
+
+function describeCondition(condition: ConditionDocumentation): string {
+  if ("all" in condition) return condition.all.map(describeCondition).join(" and ");
+  if ("any" in condition) return `(${condition.any.map(describeCondition).join(" or ")})`;
+  if ("not" in condition) return `not (${describeCondition(condition.not)})`;
+  if ("media" in condition) return `media ${condition.media}`;
+  return `${"option" in condition ? `option ${condition.option}` : condition.attribute} = ${JSON.stringify(condition.equals)}`;
+}
+
+function constraints(value: {
+  readonly min?: unknown;
+  readonly max?: unknown;
+  readonly integer?: unknown;
+  readonly format?: unknown;
+  readonly target?: unknown;
+}): string[] {
+  return [
+    value.min === undefined ? undefined : `Minimum: ${value.min}.`,
+    value.max === undefined ? undefined : `Maximum: ${value.max}.`,
+    value.integer ? "Must be an integer." : undefined,
+    value.format ? `Format: ${value.format}.` : undefined,
+    value.target ? `Selector must match a target in the ${value.target}.` : undefined,
+  ].filter((line): line is string => line !== undefined);
 }
 
 export function renderCatalog(entries: readonly DocumentedEntry[]): string {

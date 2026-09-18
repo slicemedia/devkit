@@ -6,6 +6,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@slicemedia/devkit-addon": resolve(import.meta.dirname, "packages/addon/src/index.ts"),
+      "@slicemedia/devkit-core/inspection": resolve(
+        import.meta.dirname,
+        "packages/core/src/inspection.ts",
+      ),
+      "@slicemedia/devtools": resolve(import.meta.dirname, "packages/devtools/src/index.ts"),
       "@slicemedia/devkit-core": resolve(import.meta.dirname, "packages/core/src/index.ts"),
     },
   },

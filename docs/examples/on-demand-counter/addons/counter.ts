@@ -1,4 +1,9 @@
-import { CORE_VERSION, installDevKitRuntime, onDomReady } from "@slicemedia/devkit-core";
+import {
+  CORE_VERSION,
+  initializeAddon,
+  installDevKitRuntime,
+  onDomReady,
+} from "@slicemedia/devkit-core";
 
 import { createCounter } from "../counter.js";
 
@@ -11,8 +16,7 @@ onDomReady(() => {
   runtime.queue.push(async () => {
     if (runtime.getAddon("counter")) return;
     const counter = createCounter();
-    await counter.init();
-    runtime.registerAddon({ name: "counter", version: counter.definition.version, value: counter });
+    await initializeAddon(runtime, counter);
   });
   void runtime.ready.catch((error: unknown) => console.error(error));
 });

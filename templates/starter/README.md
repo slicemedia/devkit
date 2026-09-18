@@ -51,3 +51,35 @@ and the matching generated skill.
 
 Copy `.env.example` to an ignored local file only when needed, and load it through your shell or CI.
 Never commit site IDs, domains, tokens, deployment credentials, or client fixtures.
+
+## Animation ownership
+
+Prefer GSAP addons for custom animation requests while keeping structure and base styling in
+Webflow. Follow an explicit user choice of GSAP, CSS, native Interactions, or another approach.
+For unspecified choices, simple state effects can use CSS, and straightforward motion maintained
+visually by designers can use native Interactions. A GSAP addon does not need proof that native
+Interactions cannot reproduce the effect.
+
+When the animations capability is selected, import the optional `src/integrations/animations.ts`
+module only from the addon or project entry that needs it. Scope animation state to each root,
+implement refresh and complete teardown, and respect reduced motion. Preserve existing animation
+owners unless a migration is requested. See
+[animation authoring](https://github.com/slicemedia/devkit/blob/main/docs/animation-authoring.md).
+
+## Inspection contracts and optional DevTools
+
+Copy and rename the ignored `src/features/_template.ts` and `src/addons/_template.ts` files for a
+new enhancement. Implement its behavior and read-only diagnostics; the templates themselves never
+run or become build entries. Use the same `context.resolveOptions(root)` for runtime behavior and
+inspection, and `initializeAddon(runtime, instance)` to keep failed initialization inspectable.
+Map the inert definition module/export in `devkit.config.json` so explain/catalog share its rules.
+See the [inspection API](https://github.com/slicemedia/devkit/blob/main/docs/inspection-api.md).
+
+Selecting the DevTools capability installs the optional `@slicemedia/devtools` package and adds
+`src/addons/devtools.ts`, built as `dist/addons/devtools.js`. It can also be installed and imported later.
+Deploy and include this script once with defer in the head. It automatically activates on webflow.io;
+on custom domains use `window.DevKitDevTools.enabled = true` and click the launcher. The flag,
+window size, and opacity persist only after interaction. Normal production visitors get no storage
+writes or scans. The `@slicemedia/devtools` package's `dist/devtools.global.js` is also a standalone
+hosting option. Addons need registered metadata for full inspection; load order does not matter
+when opening the panel or choosing Rescan.

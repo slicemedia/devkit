@@ -105,6 +105,7 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
         input: input.entryPath,
         output: {
           format: "iife",
+          comments: { legal: true, annotation: false, jsdoc: false },
           entryFileNames: input.scriptFileName,
           assetFileNames: (asset) =>
             asset.name === "style.css" ? input.cssFileName : "assets/[name]-[hash][extname]",

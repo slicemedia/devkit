@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  assertPublishedDevToolsDependencies,
   inspectPublicationArtifact,
   isProhibitedPublicationVariable,
   npmRegistry,
@@ -111,6 +112,7 @@ async function main() {
   if (environmentErrors.length > 0) throw new Error(environmentErrors.join("\n"));
   const releaseCommit = process.env.SLICEMEDIA_RELEASE_COMMIT ?? "";
   const { candidates, state } = await inspectPublicationArtifact(releaseCommit);
+  await assertPublishedDevToolsDependencies(state);
 
   for (const candidate of candidates) {
     const metadata = await registryMetadata(candidate.name);
@@ -130,7 +132,7 @@ async function main() {
     console.info(`Published exact ${candidate.name}@${candidate.version} with the next tag.`);
   }
   console.info(
-    `Submitted all five DevKit ${state.version} archives; registry verification remains unprivileged.`,
+    `Submitted ${state.packages.length} ${state.target} ${state.version} archives; registry verification remains unprivileged.`,
   );
 }
 

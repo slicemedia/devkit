@@ -16,6 +16,15 @@ export { onDomReady, whenDomReady } from "./dom.js";
 export { createEmitter } from "./emitter.js";
 export { DevKitAggregateError } from "./errors.js";
 export { installDevKitRuntime } from "./runtime.js";
+export { initializeAddon } from "./register-addon.js";
+export type {
+  AddonCondition,
+  AddonValueConstraints,
+  AddonInspectionContext,
+  AddonDiagnostics,
+  AddonDiagnostic,
+  AddonDependencyDiagnostic,
+} from "./inspection-types.js";
 export { getViewportSnapshot, observeViewport } from "./viewport.js";
 export { observeElementVisibility, observeViewportEntryOnce } from "./visibility.js";
 export { createLayoutRefreshGuard } from "./layout-refresh.js";
@@ -50,6 +59,8 @@ export type {
 } from "./runtime.js";
 export type {
   AddonAttribute,
+  AddonStructureAttribute,
+  AddonStructureNode,
   AddonDefinition,
   AddonDefinitionInput,
   AddonDependency,

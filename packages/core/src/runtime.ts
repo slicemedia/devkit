@@ -56,6 +56,9 @@ export interface DevKitRuntime {
   readonly ready: Promise<void>;
   readonly conflicts: readonly RuntimeVersionConflict[];
   readonly addons: readonly RuntimeAddonRegistration[];
+  /** Includes pending and failed instances without making their APIs ready. */
+  readonly inspectionAddons: readonly RuntimeAddonRegistration[];
+  trackAddon<Value>(registration: RuntimeAddonRegistration<Value>): RuntimeAddonRegistration<Value>;
   configure(config: DevKitConfig): DevKitConfig;
   registerAddon<Value>(registration: RuntimeAddonRegistration<Value>): "registered" | "reused";
   getAddon<Value = unknown>(name: string): RuntimeAddonRegistration<Value> | undefined;
@@ -188,6 +191,7 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
   private currentConfig: DevKitConfig;
   private readonly conflictList: RuntimeVersionConflict[] = [];
   private readonly addonMap = new Map<string, RuntimeAddonRegistration>();
+  private readonly inspectionMap = new Map<string, RuntimeAddonRegistration>();
   private readonly emitter: Emitter<RuntimeEventMap> = createEmitter<RuntimeEventMap>();
 
   constructor(version: string, config: DevKitConfig) {
@@ -213,6 +217,31 @@ class DevKitRuntimeImplementation implements DevKitRuntime {
 
   get addons(): readonly RuntimeAddonRegistration[] {
     return Object.freeze([...this.addonMap.values()]);
+  }
+
+  get inspectionAddons(): readonly RuntimeAddonRegistration[] {
+    return Object.freeze([...new Map([...this.inspectionMap, ...this.addonMap]).values()]);
+  }
+
+  trackAddon<Value>(
+    registration: RuntimeAddonRegistration<Value>,
+  ): RuntimeAddonRegistration<Value> {
+    if (!registration.name.trim() || !registration.version.trim())
+      throw new TypeError("Inspection registrations require a name and version.");
+    const existing =
+      this.addonMap.get(registration.name) ?? this.inspectionMap.get(registration.name);
+    if (existing) {
+      if (existing.version !== registration.version)
+        throw new Error(
+          `Addon "${registration.name}" is already tracked at version ${existing.version}.`,
+        );
+      return existing as RuntimeAddonRegistration<Value>;
+    }
+    if (registration.name in this || ["then", "catch", "finally"].includes(registration.name))
+      throw new TypeError(`Addon name "${registration.name}" is reserved by the runtime.`);
+    const record = Object.freeze({ ...registration });
+    this.inspectionMap.set(registration.name, record);
+    return record;
   }
 
   configure(config: DevKitConfig): DevKitConfig {

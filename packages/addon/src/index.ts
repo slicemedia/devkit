@@ -4,10 +4,19 @@ export {
   createAddon,
   defineAddon,
   getAddonMetadata,
+  initializeAddon,
 } from "@slicemedia/devkit-core";
 
 export type {
+  AddonCondition,
+  AddonValueConstraints,
+  AddonInspectionContext,
+  AddonDiagnostics,
+  AddonDiagnostic,
+  AddonDependencyDiagnostic,
   AddonAttribute,
+  AddonStructureAttribute,
+  AddonStructureNode,
   AddonDefinition,
   AddonDefinitionInput,
   AddonDependency,

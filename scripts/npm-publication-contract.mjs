@@ -56,6 +56,23 @@ export const packageDefinitions = [
   },
 ];
 
+export const devtoolsDefinition = {
+  archive: "devtools.tgz",
+  directory: "packages/devtools",
+  homepage: "https://github.com/slicemedia/devkit/tree/main/packages/devtools#readme",
+  internalDependencies: ["@slicemedia/devkit-core"],
+  keywords: ["slicemedia", "webflow", "devtools", "inspector", "addons"],
+  name: "@slicemedia/devtools",
+};
+
+export function releaseTarget(environment = process.env) {
+  const target = environment.SLICEMEDIA_RELEASE_TARGET ?? "devkit";
+  if (target !== "devkit" && target !== "devtools") {
+    throw new Error("Release target must be devkit or devtools.");
+  }
+  return target;
+}
+
 const exactProhibitedPublicationVariables = new Set([
   "NODE_AUTH_TOKEN",
   "NPM_TOKEN",
@@ -92,6 +109,7 @@ const receiptKeys = [
   "pnpmVersion",
   "schemaVersion",
   "sourceCommit",
+  "target",
   "version",
 ];
 const receiptPackageKeys = ["archive", "integrity", "name", "shasum", "treeDigest", "version"];
@@ -146,6 +164,7 @@ function validateReviewedMetadata(manifest, expected, label) {
 
 function isInternalDependencyName(name) {
   return (
+    name === "@slicemedia/devtools" ||
     name === "@slicemedia/devkit" ||
     name === "@slicemedia/create-devkit" ||
     name.startsWith("@slicemedia/devkit-")
@@ -240,10 +259,17 @@ export async function calculateArchiveMetadata(archive) {
   };
 }
 
-export async function readReleaseState({ requirePublic = true } = {}) {
+export async function readReleaseState({ requirePublic = true, target = releaseTarget() } = {}) {
+  releaseTarget({ SLICEMEDIA_RELEASE_TARGET: target });
   const packages = [];
   const errors = [];
-  for (const definition of packageDefinitions) {
+  const definitions = target === "devtools" ? [devtoolsDefinition] : packageDefinitions;
+  const core = JSON.parse(
+    await readFile(resolve(repositoryRoot, "packages/core/package.json"), "utf8"),
+  );
+  if (!exactSemver.test(core.version ?? ""))
+    throw new Error("Core must use an exact semantic version.");
+  for (const definition of definitions) {
     const manifestPath = resolve(repositoryRoot, definition.directory, "package.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     if (manifest.name !== definition.name) {
@@ -276,14 +302,21 @@ export async function readReleaseState({ requirePublic = true } = {}) {
         errors.push(`${definition.name} must not define the ${lifecycle} lifecycle script.`);
       }
     }
-    packages.push({ ...definition, manifest, version: manifest.version });
+    packages.push({
+      ...definition,
+      manifest,
+      version: manifest.version,
+      ...(target === "devtools"
+        ? { internalDependencyRanges: { "@slicemedia/devkit-core": `^${core.version}` } }
+        : {}),
+    });
   }
   const versions = unique(packages.map(({ version }) => version));
   if (versions.length !== 1) {
     errors.push("The five DevKit release packages must use one fixed version.");
   }
   if (errors.length > 0) throw new Error(errors.join("\n"));
-  return { packages, version: versions[0] };
+  return { packages, target, version: versions[0] };
 }
 
 export function validateNoPublicationOverrides(environment) {
@@ -294,6 +327,26 @@ export function validateNoPublicationOverrides(environment) {
     }
   }
   return errors;
+}
+
+export function validateDevToolsCoreMetadata(metadata, version) {
+  const errors = [];
+  if (metadata?.name !== "@slicemedia/devkit-core" || metadata?.version !== version) {
+    errors.push("DevTools requires its exact minimum core version to be published first.");
+  }
+  if (!metadata?.exports?.["./inspection"]?.import || !metadata?.exports?.["./inspection"]?.types) {
+    errors.push("The published core must expose the inspection API and its declarations.");
+  }
+  return errors;
+}
+
+export async function assertPublishedDevToolsDependencies(state) {
+  if (state.target !== "devtools") return;
+  const version = state.packages[0].internalDependencyRanges["@slicemedia/devkit-core"].slice(1);
+  const response = await globalThis.fetch(`${npmRegistry}@slicemedia%2fdevkit-core/${version}`);
+  if (!response.ok) throw new Error(`Publish and verify DevKit ${version} before DevTools.`);
+  const errors = validateDevToolsCoreMetadata(await response.json(), version);
+  if (errors.length > 0) throw new Error(errors.join("\n"));
 }
 
 export function validatePackedManifest(manifest, expected) {
@@ -310,7 +363,11 @@ export function validatePackedManifest(manifest, expected) {
   errors.push(...validateReviewedMetadata(manifest, expected, `${expected.name} packed manifest`));
 
   const expectedInternalDependencies = expected.internalDependencies
-    .map((name) => ({ name, range: expected.version, section: "dependencies" }))
+    .map((name) => ({
+      name,
+      range: expected.internalDependencyRanges?.[name] ?? expected.version,
+      section: "dependencies",
+    }))
     .sort((left, right) => left.name.localeCompare(right.name));
   const actualInternalDependencies = internalDependencyRows(manifest);
   if (!sameJson(actualInternalDependencies, expectedInternalDependencies)) {
@@ -359,6 +416,11 @@ export async function assertPackedManifest(archive, expected) {
 
 export function validatePublicationEnvironment(environment) {
   const errors = validateNoPublicationOverrides(environment);
+  try {
+    releaseTarget(environment);
+  } catch (error) {
+    errors.push(error.message);
+  }
   if (environment.GITHUB_REPOSITORY !== "slicemedia/devkit") {
     errors.push("Publication is running in an unexpected repository.");
   }
@@ -396,9 +458,11 @@ export function validatePublicationEnvironment(environment) {
 export function validateReceiptShape(receipt, state, expectedCommit) {
   const errors = [];
   if (!exactKeys(receipt, receiptKeys)) {
-    return ["Publication receipt does not match schema 1 exactly."];
+    return ["Publication receipt does not match schema 2 exactly."];
   }
-  if (receipt.schemaVersion !== 1) errors.push("Publication receipt has an unexpected schema.");
+  if (receipt.schemaVersion !== 2) errors.push("Publication receipt has an unexpected schema.");
+  if (receipt.target !== state.target)
+    errors.push("Publication receipt has an unexpected release target.");
   if (receipt.npmVersion !== npmVersion) {
     errors.push(`Publication receipt must be prepared with npm ${npmVersion}.`);
   }
@@ -409,16 +473,16 @@ export function validateReceiptShape(receipt, state, expectedCommit) {
     errors.push("Publication receipt is not bound to the approved release commit.");
   }
   if (receipt.version !== state.version) {
-    errors.push("Publication receipt does not match the fixed DevKit version.");
+    errors.push("Publication receipt does not match the selected release version.");
   }
   if (!Array.isArray(receipt.packages) || receipt.packages.length !== state.packages.length) {
-    errors.push("Publication receipt must list the complete DevKit package family.");
+    errors.push("Publication receipt must list exactly the selected release packages.");
     return errors;
   }
   for (const [index, expected] of state.packages.entries()) {
     const candidate = receipt.packages[index];
     if (!exactKeys(candidate, receiptPackageKeys)) {
-      errors.push(`Publication receipt package ${index} does not match schema 1.`);
+      errors.push(`Publication receipt package ${index} does not match schema 2.`);
       continue;
     }
     if (

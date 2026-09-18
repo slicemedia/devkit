@@ -44,3 +44,9 @@ This package is independently developed by Slice Media and is not affiliated wit
 sponsored by Webflow, Inc. Webflow and related marks belong to their respective owners. AI tools
 materially assisted its implementation and documentation; production use still requires human
 review, accessibility and security checks, and project-specific testing.
+
+The optional **On-page DevTools inspector** capability installs the independently versioned
+`@slicemedia/devtools` package and emits `src/addons/devtools.ts` and setup
+metadata for its standalone production script. Ignored authoring templates under `src/features/`
+and `src/addons/` demonstrate shared inspection contracts and initialization that retains failures.
+They add no feature behavior to the starter until copied, renamed, and implemented.

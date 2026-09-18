@@ -29,6 +29,13 @@ export const counterDefinition = defineAddon<CounterOptions, { instances: number
     { name: "duration", description: "Animation duration in milliseconds.", type: "number" },
   ],
   defaultOptions: { selector: "[data-wft-counter]", duration: 1200 },
+  structure: {
+    id: "counter",
+    label: "Number element",
+    selector: "[data-wft-counter]",
+    selectorOption: "selector",
+    attributes: [{ name: "data-wft-counter" }, { name: "data-wft-counter-to" }],
+  },
   usage: {
     setup: [
       "Create an accessible Webflow text wrapper containing the final number.",

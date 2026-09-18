@@ -31,6 +31,7 @@ export type {
   CommandResult,
   EntryUsage,
   ProjectBundle,
+  StructureDocumentation,
 } from "./types.js";
 export {
   WebflowClient,

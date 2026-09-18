@@ -18,6 +18,9 @@ interface EntryConfig {
   readonly defaultOptions?: Readonly<Record<string, unknown>>;
   readonly api?: Readonly<Record<string, unknown>>;
   readonly usage?: EntryUsage;
+  readonly structure?: AddonEntry["structure"];
+  readonly scope?: AddonEntry["scope"];
+  readonly dependencyDetails?: AddonEntry["dependencyDetails"];
   readonly attributeDetails?: readonly AttributeDocumentation[];
   readonly definition?: AddonEntry["definition"];
   readonly bundle?: AddonEntry["bundle"];
@@ -47,6 +50,8 @@ interface CatalogDefinition {
   readonly lifecycle?: unknown;
   readonly defaultOptions?: unknown;
   readonly usage?: EntryUsage;
+  readonly structure?: AddonEntry["structure"];
+  readonly scope?: AddonEntry["scope"];
 }
 
 const sourceExtensions = new Set([".ts", ".tsx", ".js", ".mjs"]);
@@ -180,7 +185,18 @@ function enrichEntry(entry: AddonEntry, definition: CatalogDefinition | undefine
         }
       : {}),
     dependencies,
+    ...(Array.isArray(definition.dependencies)
+      ? {
+          dependencyDetails: definition.dependencies
+            .filter(isRecord)
+            .filter((dependency) => typeof dependency.name === "string") as unknown as NonNullable<
+            AddonEntry["dependencyDetails"]
+          >,
+        }
+      : {}),
+    ...(definition.scope ? { scope: definition.scope } : {}),
     ...(definition.usage ? { usage: definition.usage } : {}),
+    ...(definition.structure ? { structure: definition.structure } : {}),
     ...(isRecord(definition.defaultOptions) && !Array.isArray(definition.defaultOptions)
       ? { defaultOptions: definition.defaultOptions }
       : {}),
@@ -314,6 +330,9 @@ function mergeEntry(
     ...(metadata.defaultOptions === undefined ? {} : { defaultOptions: metadata.defaultOptions }),
     api: metadata.api ?? { entry: name },
     ...(metadata.usage ? { usage: metadata.usage } : {}),
+    ...(metadata.structure ? { structure: metadata.structure } : {}),
+    ...(metadata.scope ? { scope: metadata.scope } : {}),
+    ...(metadata.dependencyDetails ? { dependencyDetails: metadata.dependencyDetails } : {}),
     ...(metadata.attributeDetails ? { attributeDetails: metadata.attributeDetails } : {}),
     ...(metadata.definition ? { definition: metadata.definition } : {}),
     ...(metadata.bundle ? { bundle: metadata.bundle } : {}),
