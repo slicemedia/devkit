@@ -28,9 +28,11 @@ browser bootstrap: it imports reusable behavior, explicitly installs/reuses the 
 initializes its addon, and registers the public API. Importing an inert definition alone does not
 initialize anything. See the [counter walkthrough](examples/on-demand-counter/README.md).
 
-Every script bundles its own imports and needs no shared chunk or separate runtime script.
-This can duplicate a vendor when several standalone addons use it. An optional project entry can
-deliberately combine selected behaviors when that tradeoff is useful. Avoid loading both that
+Every addon remains independently selectable. Share heavy libraries through declared vendor entries
+and on-demand loaders; they build once under `dist/vendor/`. The small runtime helper code remains
+in each addon. Do not statically import the same heavy vendor in multiple entries or rely on a
+dynamic import being split out of an IIFE. See [shared dependencies](shared-dependencies.md).
+An optional project entry can deliberately combine selected behaviors when useful. Avoid loading both that
 combined entry and the individual entries for the same behavior. All public bootstraps should
 check for an existing registration before initializing and use the runtime queue to serialize
 initialization. Runtime version conflicts are reported rather than silently replaced.
@@ -62,7 +64,8 @@ clearing output, clears it once, builds sequentially, then writes a manifest of 
 `--out-dir` changes the output root. Private maps from `--sourcemap` stay outside that root.
 
 `build --entry <file>` remains an explicit single-entry escape hatch. It clears its output
-directory, so do not loop that command over addons sharing a destination; use the default build.
+directory and does not build declared vendors, so do not loop that command over addons sharing a
+destination; use the default build for a deployable addon/vendor set.
 An empty project succeeds with an empty manifest and no invented example addon.
 
 ## Migrating an earlier generated project
@@ -80,7 +83,8 @@ An empty project succeeds with an empty manifest and no invented example addon.
 
 Changing build output does not delete old CDN objects or update/publish Webflow pages. Those are
 separate deployment actions. The independent Spaces Deployer accepts a deployment directory;
-point it at `dist/`, which now contains multiple scripts and optional stylesheets.
+point it at all of `dist/`, including declared `vendor/` files as well as addon/project scripts
+and optional stylesheets. See [deployment](deployment.md).
 
 The earlier single-bundle rule was present in foundation commit `621f55c`. This architecture
 replaces it with independently selectable addons while preserving side-effect-free packages.

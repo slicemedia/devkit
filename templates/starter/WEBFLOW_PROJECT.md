@@ -11,8 +11,10 @@ Use `src/main.ts` or `src/projects/` only for optional, deliberately composed pr
   for simple state effects or native Interactions when they are clearly sufficient and Designer
   ownership is useful. Choosing GSAP does not require proving native Interactions are incapable.
   Preserve existing animation ownership unless changing it is part of the request.
+- Prefer Swiper for sliders and carousels, using the optional Slice Media Swiper Adapter where appropriate. Honor an explicit user choice of native Webflow sliders or another implementation; preserve existing ownership unless migration is requested.
 - Use documented, scoped `data-wft-*` hooks instead of generated classes or guessed identifiers.
-- Keep optional files under `src/integrations/` disconnected until their markup contract is ready.
+- Keep optional files under `src/integrations/` disconnected until their markup contract is ready. Await the generated loaders; shared dependency imports belong in declared `src/vendors/` entries, emitted once under `dist/vendor/`.
+- Load vendors only after matching markup needs them, optionally near the viewport. Deploy all of `dist/`, preserving addon, project, and vendor paths; keep private sourcemaps outside it.
 - Make initialization idempotent and restore owned DOM, attributes, listeners, observers, and timers
   during teardown.
 - Install the shared DevKit runtime explicitly and register each public addon API after successful

@@ -1,4 +1,4 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ViteDevServer } from "vite";
@@ -16,7 +16,7 @@ import {
 } from "./documentation.js";
 import { consoleWriter, writeResult, type OutputWriter } from "./output.js";
 import { forbiddenTermsFromEnvironment, sanitizeTree } from "./sanitize.js";
-import type { CommandResult } from "./types.js";
+import type { AddonEntry, CommandResult, ProjectBundle } from "./types.js";
 import { WebflowClient, webflowOAuthTokenFromEnvironment } from "./webflow/client.js";
 import { scanApiScripts, scanRenderedScripts } from "./webflow/scan.js";
 
@@ -113,9 +113,9 @@ function helpResult(): CommandResult<readonly string[]> {
       "sanitize [--git-history]",
       "catalog [--out docs/addons.md] [--manifest dist/webflow-scripts.json] [--public-base-url <url>]",
       "explain <addon> [--out docs/setup.md] [--public-base-url <url>] [--dev-url <url>] [--hmr=false]",
-      "build [--out-dir dist] [--sourcemap] — build every public addon and project entry separately",
+      "build [--out-dir dist] [--sourcemap] — build public addon/project entries and declared shared vendors",
       "build --entry <file> [--out-dir dist] [--script-file <name.js>] [--css-file <name.css>] [--sourcemap] — explicit single entry",
-      "dev [--host 127.0.0.1] [--port 5173]",
+      "dev [--host 127.0.0.1] [--port 5173] [--origin <testing-page-origin>] (repeat --origin for multiple origins)",
       "webflow components --site <id>",
       "webflow scan (--site <id> | --url <url>)",
     ],
@@ -193,7 +193,10 @@ async function runSanitize(
 async function runCatalog(args: ReturnType<typeof parseArgs>, cwd: string): Promise<CommandResult> {
   const root = path.resolve(cwd, getOption(args, "root") ?? ".");
   const entries = await discoverAddonEntries(root);
-  const documented = entries.map((entry) =>
+  const withArtifacts = await Promise.all(
+    entries.map((entry) => withBuiltStylesheet(root, entry, args)),
+  );
+  const documented = withArtifacts.map((entry) =>
     documentEntry(
       { ...entry, input: normalizeRelative(root, entry.input) },
       documentationOptions(args),
@@ -203,12 +206,27 @@ async function runCatalog(args: ReturnType<typeof parseArgs>, cwd: string): Prom
   const output = getOption(args, "out");
   if (output) await writeDocument(root, output, text);
   const manifest = getOption(args, "manifest");
-  if (manifest)
+  if (manifest) {
+    const existing = await readManifest(path.resolve(root, manifest));
+    // Enrich an existing build manifest without replacing its exact file list or vendor entries.
+    const manifestEntries = existing
+      ? existing.entries.map((built) => {
+          const entry = documented.find((entry) => entry.name === built.name);
+          if (
+            !entry ||
+            entry.bundle?.input !== built.bundle?.input ||
+            entry.bundle?.scriptFile !== built.bundle?.scriptFile
+          )
+            return built;
+          return { ...built, ...entry, bundle: built.bundle };
+        })
+      : documented;
     await writeDocument(
       root,
       manifest,
-      `${JSON.stringify({ schemaVersion: 1, entries: documented }, null, 2)}\n`,
+      `${JSON.stringify({ ...existing, schemaVersion: 1, entries: manifestEntries }, null, 2)}\n`,
     );
+  }
   return {
     ok: true,
     command: "catalog",
@@ -228,7 +246,10 @@ async function runExplain(
   const entry = (await discoverAddonEntries(root)).find((candidate) => candidate.name === name);
   if (entry === undefined) throw new Error(`Unknown addon ${JSON.stringify(name)}.`);
   const documented = documentEntry(
-    { ...entry, input: normalizeRelative(root, entry.input) },
+    {
+      ...(await withBuiltStylesheet(root, entry, args)),
+      input: normalizeRelative(root, entry.input),
+    },
     documentationOptions(args),
   );
   const text = renderSetupGuide(documented);
@@ -241,6 +262,49 @@ async function runExplain(
     data: documented,
     text,
   };
+}
+
+interface BuildManifest {
+  readonly schemaVersion: number;
+  readonly entries: readonly { readonly name: string; readonly bundle?: ProjectBundle }[];
+  readonly vendors?: readonly unknown[];
+}
+
+async function readManifest(file: string): Promise<BuildManifest | undefined> {
+  try {
+    const value = JSON.parse(await readFile(file, "utf8")) as BuildManifest;
+    if (value.schemaVersion !== 1 || !Array.isArray(value.entries))
+      throw new Error(`Invalid script manifest: ${file}`);
+    return value;
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT")
+      return undefined;
+    throw error;
+  }
+}
+
+async function withBuiltStylesheet(
+  root: string,
+  entry: AddonEntry,
+  args: ReturnType<typeof parseArgs>,
+): Promise<AddonEntry> {
+  if (!entry.bundle) return entry;
+  const outDir = path.resolve(root, getOption(args, "out-dir") ?? "dist");
+  const manifest = await readManifest(path.join(outDir, "webflow-scripts.json"));
+  const built = manifest?.entries.find((candidate) => candidate.name === entry.name)?.bundle;
+  const planned = { input: entry.bundle.input, scriptFile: entry.bundle.scriptFile };
+  const cssFile = built?.cssFile;
+  // Build output, not a naming convention or configured candidate, determines whether CSS exists.
+  if (
+    built?.input === planned.input &&
+    built.scriptFile === planned.scriptFile &&
+    cssFile &&
+    (await exists(path.join(outDir, built.scriptFile))) &&
+    (await exists(path.join(outDir, cssFile)))
+  ) {
+    return { ...entry, bundle: { ...planned, cssFile } };
+  }
+  return { ...entry, bundle: planned };
 }
 
 function documentationOptions(args: ReturnType<typeof parseArgs>): DocumentationOptions {
@@ -290,11 +354,13 @@ async function runBuild(
       ...(outDir ? { outDir } : {}),
       ...(hasFlag(args, "sourcemap") ? { sourcemap: true } : {}),
     });
-    const maps = result.entries.flatMap((script) => script.sourceMapPaths ?? []);
+    const maps = [...result.entries, ...result.vendors].flatMap(
+      (script) => script.sourceMapPaths ?? [],
+    );
     return {
       ok: true,
       command: "build",
-      summary: `Built ${result.entries.length} standalone script(s).${maps.length ? ` Private sourcemaps: ${maps.join(", ")}` : ""}`,
+      summary: `Built ${result.entries.length} standalone script(s) and ${result.vendors.length} shared vendor(s).${maps.length ? ` Private sourcemaps: ${maps.join(", ")}` : ""}`,
       data: result,
     };
   }
@@ -326,6 +392,7 @@ async function runDev(
     root,
     ...(host === undefined ? {} : { host }),
     port: getIntegerOption(args, "port", 5173),
+    origins: getOptions(args, "origin"),
   });
   const firstUrl = server.resolvedUrls?.local[0] ?? server.resolvedUrls?.network[0];
   return {

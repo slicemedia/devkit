@@ -45,6 +45,126 @@ runtime.queue.push(async () => {
 }
 
 describe("standalone public builds", () => {
+  it("loads one shared vendor and stylesheet across independently built addon IIFEs", async () => {
+    const root = await project();
+    const core = path.resolve(import.meta.dirname, "../../core/src/index.ts");
+    await mkdir(path.join(root, "src/vendors"));
+    await mkdir(path.join(root, "src/integrations"));
+    await writeFile(
+      path.join(root, "src/integrations/shared.ts"),
+      `import { loadSharedModule, resolveVendorAsset } from ${JSON.stringify(core)};
+const moduleUrl = import.meta.url;
+export const load = () => loadSharedModule({ url: resolveVendorAsset("shared.js", moduleUrl), styles: [{url: resolveVendorAsset("shared.css", moduleUrl)}] });`,
+    );
+    for (const name of ["alpha", "beta"]) {
+      await writeFile(
+        path.join(root, `src/addons/${name}.ts`),
+        `import { load } from "../integrations/shared"; window.load${name} = load;`,
+      );
+    }
+    await writeFile(
+      path.join(root, "src/vendors/shared.ts"),
+      `import { registerSharedModule } from ${JSON.stringify(core)};
+import "./shared.css";
+window.vendorExecutions = (window.vendorExecutions || 0) + 1;
+registerSharedModule({ marker: "vendor-payload-only-once" });`,
+    );
+    await writeFile(path.join(root, "src/vendors/shared.css"), "[data-wft-shared]{color:red}");
+    await writeFile(
+      path.join(root, "devkit.config.json"),
+      JSON.stringify({ vendors: [{ name: "shared", input: "src/vendors/shared.ts" }] }),
+    );
+    const result = await buildScripts({ root, sourcemap: true });
+    expect(result.vendors).toEqual([
+      expect.objectContaining({ scriptFile: "vendor/shared.js", cssFile: "vendor/shared.css" }),
+    ]);
+    const run = (code: string, src: string) => {
+      const script = document.createElement("script");
+      script.src = src;
+      Object.defineProperty(document, "currentScript", { configurable: true, value: script });
+      try {
+        runInNewContext(code, { window, document, URL, setTimeout, clearTimeout });
+      } finally {
+        Reflect.deleteProperty(document, "currentScript");
+      }
+    };
+    document.head.replaceChildren();
+    document.body.replaceChildren();
+    for (const entry of result.entries) {
+      const code = await readFile(entry.scriptPath, "utf8");
+      expect(code).not.toContain("vendor-payload-only-once");
+      run(code, `https://assets.example.com/shared-test/${entry.scriptFile}`);
+    }
+    expect(document.querySelectorAll("script,link")).toHaveLength(0);
+    const first = (Reflect.get(window, "loadalpha") as () => Promise<unknown>)();
+    const second = (Reflect.get(window, "loadbeta") as () => Promise<unknown>)();
+    const scripts = document.querySelectorAll<HTMLScriptElement>("script");
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0]!.src).toBe("https://assets.example.com/shared-test/vendor/shared.js");
+    expect(document.querySelectorAll("link")).toHaveLength(1);
+    run(await readFile(result.vendors[0]!.scriptPath, "utf8"), scripts[0]!.src);
+    scripts[0]!.dispatchEvent(new Event("load"));
+    let settled = false;
+    void first.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    document.querySelector("link")!.dispatchEvent(new Event("load"));
+    expect(await first).toBe(await second);
+    expect(Reflect.get(window, "vendorExecutions")).toBe(1);
+    for (const name of ["loadalpha", "loadbeta", "vendorExecutions"])
+      Reflect.deleteProperty(window, name);
+    document.head.replaceChildren();
+    document.body.replaceChildren();
+  });
+
+  it("keeps catalog CSS and vendor paths consistent with actual build outputs", async () => {
+    const root = await project();
+    await writeFile(path.join(root, "src/addons/plain.ts"), "document.title = 'plain';");
+    await writeFile(
+      path.join(root, "src/addons/styled.ts"),
+      'import "../theme.css"; document.title = "styled";',
+    );
+    await writeFile(path.join(root, "src/theme.css"), "body{color:red}");
+    await mkdir(path.join(root, "src/vendors"));
+    await writeFile(path.join(root, "src/vendors/shared.ts"), 'document.title = "vendor";');
+    await writeFile(
+      path.join(root, "devkit.config.json"),
+      JSON.stringify({ vendors: [{ name: "shared", input: "src/vendors/shared.ts" }] }),
+    );
+    const result = await buildScripts({ root });
+    const output: string[] = [];
+    expect(
+      await runCli(
+        [
+          "catalog",
+          "--manifest",
+          "dist/webflow-scripts.json",
+          "--public-base-url",
+          "https://assets.example.com/",
+          "--json",
+        ],
+        {
+          cwd: root,
+          writer: { info: (text) => output.push(text), error: (text) => output.push(text) },
+        },
+      ),
+    ).toBe(0);
+    const documented = JSON.parse(output[0]!).data;
+    expect(
+      documented.find((entry: { name: string }) => entry.name === "plain").snippets.stylesheet,
+    ).toBeUndefined();
+    expect(
+      documented.find((entry: { name: string }) => entry.name === "styled").snippets.stylesheet,
+    ).toContain("addons/styled.css");
+    const manifest = JSON.parse(await readFile(result.manifestPath, "utf8"));
+    expect(
+      manifest.entries.find((entry: { name: string }) => entry.name === "plain").bundle.cssFile,
+    ).toBeUndefined();
+    expect(manifest.vendors[0].bundle.scriptFile).toBe("vendor/shared.js");
+  });
+
   it("builds separate self-contained addons, per-entry CSS, private maps and exact script tags", async () => {
     const root = await project();
     await writeFile(path.join(root, "src/addons/alpha.ts"), browserEntry("alpha"));

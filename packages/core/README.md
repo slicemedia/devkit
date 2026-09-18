@@ -3,7 +3,7 @@
 Side-effect-free addon lifecycle, event, DOM, breakpoint, viewport, asset, and CSS utilities for
 Webflow browser code.
 
-Install the `0.1.0` release candidate through the npm `next` tag:
+Install the current release candidate through the npm `next` tag:
 
 ```sh
 npm install @slicemedia/devkit-core@next
@@ -19,6 +19,10 @@ call and no standalone global build is shipped.
 
 Opt-in `observeViewportEntryOnce`, `observeElementVisibility`, and `createLayoutRefreshGuard`
 support deferred work, visibility-based animation control, and refreshes after late layout changes.
+The guard supports optional window-load settling passes and reason/count diagnostics.
+`loadSharedModule()` and `registerSharedModule()` share project vendor APIs across independent
+addon bundles; `loadAssetOnce()` shares pending loads and security checks per document.
+See [shared dependencies](../../docs/shared-dependencies.md).
 An explicitly installed window runtime exposes cancellable `whenReady(name, callback)` subscribers;
 registered APIs are available directly as `window.slicemediaDevKit.counter`, for example.
 Addon instances emit named `init`, `refresh`, and `destroy` completion events alongside

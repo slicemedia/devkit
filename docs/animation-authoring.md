@@ -18,7 +18,8 @@ layout, content, and base styles; the addon owns the animation behavior on that 
    competing owners before animating the same properties or triggers.
 
 Keep libraries optional. The creator's animations capability supplies a project-owned GSAP
-integration; projects import it only from entries that need animation. Do not add GSAP to core,
+integration and a shared GSAP/ScrollTrigger vendor. Projects call `await loadProjectAnimations()`
+only after matching markup needs animation; multiple addon files reuse one download and module. Do not add GSAP to core,
 automatically load it on every page, or create an unused example addon.
 
 ## Build an animation addon

@@ -81,17 +81,17 @@ const capabilityExpectations: Record<
       swiper: "^14.1.0",
     },
     integration: "src/integrations/slider.ts",
-    markers: ["createResponsiveSwiper", 'import "swiper/css"', "data-wft-slider"],
+    markers: ["createResponsiveSwiper", "loadSharedModule", "data-wft-slider"],
   },
   animations: {
     dependencies: { gsap: "^3.13.0" },
     integration: "src/integrations/animations.ts",
-    markers: ['from "gsap"'],
+    markers: ["loadProjectAnimations", "loadSharedModule"],
   },
   tooltips: {
     dependencies: { "tippy.js": "^6.3.7" },
     integration: "src/integrations/tooltips.ts",
-    markers: ['from "tippy.js"', 'import "tippy.js/dist/tippy.css"', "data-wft-tooltip"],
+    markers: ['from "tippy.js"', "loadSharedModule", "data-wft-tooltip"],
   },
   "digitalocean-spaces": {
     dependencies: {
@@ -298,6 +298,18 @@ describe("scaffoldProject", () => {
         expect(environment).toContain("DIGITALOCEAN_SPACES_SECRET_ACCESS_KEY=\n");
         expect(environment).toContain("DIGITALOCEAN_TOKEN=\n");
       } else {
+        const vendor = await readFile(
+          join(targetDirectory, "src/vendors", `${capability}.ts`),
+          "utf8",
+        );
+        expect(vendor).toContain("registerSharedModule");
+        expect(integration).not.toMatch(/import ["'](?:swiper|tippy)/u);
+        const config = JSON.parse(
+          await readFile(join(targetDirectory, "devkit.config.json"), "utf8"),
+        );
+        expect(config.vendors).toEqual([
+          { name: capability, input: `src/vendors/${capability}.ts` },
+        ]);
         expect(await readFile(join(targetDirectory, ".env.example"), "utf8")).not.toContain(
           "SPACES_",
         );

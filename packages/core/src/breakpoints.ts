@@ -104,6 +104,9 @@ export function createBreakpointService(options: BreakpointServiceOptions = {}):
 
   const start = () => {
     if (listening || destroyed) return;
+    // Resize events are intentionally not observed while unused. Read the current viewport
+    // before delivering the first subscription, including after a previous unsubscribe.
+    snapshot = getWebflowBreakpoint(targetWindow.innerWidth, breakpoints);
     listening = true;
     targetWindow.addEventListener("resize", refresh, { passive: true });
   };
@@ -115,8 +118,9 @@ export function createBreakpointService(options: BreakpointServiceOptions = {}):
   };
 
   return {
-    getSnapshot: () => snapshot,
-    isAtLeast: (breakpoint) => snapshot.width >= breakpoints[breakpoint],
+    getSnapshot: () => (listening || destroyed ? snapshot : refresh()),
+    isAtLeast: (breakpoint) =>
+      (listening || destroyed ? snapshot : refresh()).width >= breakpoints[breakpoint],
     subscribe(listener, subscriptionOptions = {}) {
       if (destroyed) throw new Error("Cannot subscribe to a destroyed breakpoint service.");
       listeners.add(listener);

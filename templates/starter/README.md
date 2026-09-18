@@ -6,7 +6,9 @@ starter is deliberately neutral: no optional capability is imported by `src/main
 ## Local development
 
 1. Run `pnpm install`.
-2. Run `pnpm dev` for the CORS-enabled local development server.
+2. Run `pnpm dev` for local testing. For a Webflow testing page, pass `--origin` with its exact origin
+   to the dev command; repeat the option for additional approved origins. Remote origins are not
+   enabled by default.
 3. Author the Webflow markup contract with `data-wft-*` behavior hooks.
 4. Import only the generated files under `src/integrations/` that the project is ready to compose.
 5. Run `pnpm typecheck` and `pnpm build`.
@@ -14,6 +16,13 @@ starter is deliberately neutral: no optional capability is imported by `src/main
 Create each public browser entry in `src/addons/<name>.ts` or `src/addons/<name>/index.ts`.
 The build emits separate standalone ES2018 scripts at `dist/addons/<name>.js` and optional
 `dist/addons/<name>.css`. Shared helpers belong outside these entry paths or in `_`-prefixed files.
+Selected slider, animation, and tooltip capabilities also declare shared vendor entries in
+`devkit.config.json`. These build once under `dist/vendor/`; await the functions in
+`src/integrations/` only after matching markup needs them, optionally near the viewport. Swiper,
+GSAP/ScrollTrigger, and Tippy stay out of other addon downloads. Import vendor code and CSS only in
+`src/vendors/`, not in each addon. Dev builds vendors at startup; restart after vendor changes.
+Deploy the complete `dist/` tree with paths intact through any hosting action.
+
 New addons are discovered automatically alongside entries configured in `devkit.config.json`.
 `pnpm catalog -- --json` inspects all public entries. Use
 `pnpm devkit -- <command>` for other DevKit commands.
@@ -61,7 +70,20 @@ visually by designers can use native Interactions. A GSAP addon does not need pr
 Interactions cannot reproduce the effect.
 
 When the animations capability is selected, import the optional `src/integrations/animations.ts`
-module only from the addon or project entry that needs it. Scope animation state to each root,
+module only from the addon or project entry that needs it, then await `loadProjectAnimations()`. Scope animation state to each root,
 implement refresh and complete teardown, and respect reduced motion. Preserve existing animation
 owners unless a migration is requested. See
 [animation authoring](https://github.com/slicemedia/devkit/blob/main/docs/animation-authoring.md).
+
+## Slider ownership
+
+Prefer Swiper for sliders and carousels, with the optional Slice Media Swiper Adapter. Honor an
+explicit user choice of native Webflow sliders or another implementation. Preserve existing slider
+ownership unless migration is requested. Await `createProjectSlider()` after matching markup needs
+it, then initialize and own the returned controller's teardown.
+
+For stable Spaces URLs, use the selected deployment integration and its reviewed plan. Supply a
+dedicated prefix and CDN endpoint; bucket versioning is optional. Reapplying the same unchanged,
+approved plan can retry failed uploads or purging. Deployments are not atomic across multiple
+files, so serialize CI writers and retain matching addon/vendor artifacts for rollback.
+See [deployment](https://github.com/slicemedia/devkit/blob/main/docs/deployment.md).

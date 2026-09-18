@@ -10,7 +10,22 @@ const { runtime } = installation;
 onDomReady(() => {
   runtime.queue.push(async () => {
     if (runtime.getAddon("counter")) return;
-    const counter = createCounter();
+    const configured = runtime.config.counter;
+    let options = {};
+    if (configured !== undefined) {
+      if (typeof configured !== "object" || configured === null || Array.isArray(configured))
+        throw new TypeError("Counter configuration must be an object.");
+      if ("duration" in configured) {
+        if (
+          typeof configured.duration !== "number" ||
+          !Number.isFinite(configured.duration) ||
+          configured.duration < 0
+        )
+          throw new TypeError("Counter duration must be a non-negative finite number.");
+        options = { duration: configured.duration };
+      }
+    }
+    const counter = createCounter(options);
     await counter.init();
     runtime.registerAddon({ name: "counter", version: counter.definition.version, value: counter });
   });

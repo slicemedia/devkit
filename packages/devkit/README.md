@@ -4,7 +4,7 @@ The optional convenience package for Slice Media DevKit. Its root re-exports the
 browser runtime from `@slicemedia/devkit-core`; the `@slicemedia/devkit/addon` subpath exposes addon
 authoring primitives.
 
-Install the `0.1.0` release candidate through the npm `next` tag:
+Install the current release candidate through the npm `next` tag:
 
 ```sh
 npm install @slicemedia/devkit@next

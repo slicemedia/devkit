@@ -13,8 +13,10 @@ The asset base URL is explicitly supplied by the consuming project. Generated pr
 are instructions, not evidence that an asset is already deployed. No command writes to Webflow.
 `--out` and `--manifest` intentionally replace the named generated files. Build writes a minimal
 `dist/webflow-scripts.json` manifest of actual outputs. Run `catalog --manifest` after building to
-replace it with full contracts/snippets; this documentation manifest uses schema version 1 and an
-`entries` array containing the same documented contracts and snippets as the JSON CLI output.
+enrich matching built entries with contracts/snippets while preserving their actual paths and the
+`vendors` list. CSS tags require an emitted manifest entry and an existing file; no stylesheet is
+invented before a build. Use `--out-dir` for a custom build directory. Rebuild when source or output
+configuration changes before regenerating the deployment manifest.
 
 ## One authoritative contract
 
@@ -62,7 +64,10 @@ entry; each real addon is authored separately.
 ## Development and custom build paths
 
 Development snippets load Vite's HMR client and that addon's browser entry. CSS imported by that entry
-is handled by Vite during development. These snippets are for approved testing pages only.
+is handled by Vite during development. Declared vendors are built at server startup; restart after
+vendor edits. Start with `slicemedia-devkit dev --origin https://testing.example.com` using the exact
+approved testing-page origin. Repeat `--origin` for additional origins. These snippets are for
+approved testing pages only.
 
 ```sh
 slicemedia-devkit explain counter --dev-url http://localhost:5174 --hmr=false

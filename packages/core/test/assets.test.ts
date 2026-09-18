@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AssetLoadError, loadAssetOnce } from "../src/index.js";
 
@@ -8,6 +8,50 @@ afterEach(() => {
 });
 
 describe("loadAssetOnce", () => {
+  it("waits for an existing unmarked script instead of claiming it is ready", async () => {
+    const script = document.createElement("script");
+    script.src = "/assets/already-loading.js";
+    document.head.append(script);
+    let ready = false;
+    const pending = loadAssetOnce({ type: "script", url: script.src, document });
+    void pending.then(() => {
+      ready = true;
+    });
+    await Promise.resolve();
+    expect(ready).toBe(false);
+    script.dispatchEvent(new Event("load"));
+    await expect(pending).resolves.toBe(script);
+  });
+
+  it("can confirm an existing script whose load event already fired", async () => {
+    const script = document.createElement("script");
+    script.src = "/assets/ready.js";
+    document.head.append(script);
+    await expect(
+      loadAssetOnce({ type: "script", url: script.src, document, isReady: () => true }),
+    ).resolves.toBe(script);
+  });
+
+  it("shares pending loads and key conflicts across separately loaded module copies", async () => {
+    vi.resetModules();
+    const { loadAssetOnce: other } = await import("../src/assets.js");
+    const options = {
+      type: "script" as const,
+      url: "/assets/shared.js",
+      key: "shared-across-addons",
+      document,
+    };
+    const first = loadAssetOnce(options);
+    expect(other(options)).toBe(first);
+    await expect(other({ ...options, url: "/assets/different.js" })).rejects.toThrow(
+      "incompatible",
+    );
+    const script = document.querySelector("script")!;
+    expect(document.querySelectorAll("script")).toHaveLength(1);
+    script.dispatchEvent(new Event("load"));
+    await first;
+  });
+
   it("deduplicates concurrent script requests", async () => {
     const options = {
       type: "script" as const,

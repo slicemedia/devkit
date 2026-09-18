@@ -271,6 +271,7 @@ export interface ResponsiveSwiperOptions {
   swiper?: SwiperOptions;
   enabled?: { minWidth?: number; maxWidth?: number } | ((viewportWidth: number) => boolean);
   observeMutations?: boolean;
+  document?: Document;
 }
 export interface ResponsiveSwiperController {
   init(): void;

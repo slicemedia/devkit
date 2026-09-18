@@ -4,6 +4,7 @@ import path from "node:path";
 import { buildSiteBundle, type ViteBuild } from "./build.js";
 import { discoverAddonEntries } from "./discovery.js";
 import type { AddonEntry } from "./types.js";
+import { readVendorEntries } from "./vendors.js";
 
 export interface BuildScriptsOptions {
   readonly root: string;
@@ -14,7 +15,7 @@ export interface BuildScriptsOptions {
 
 export interface BuiltScript {
   readonly name: string;
-  readonly kind: "addon" | "project";
+  readonly kind: "addon" | "project" | "vendor";
   readonly input: string;
   readonly scriptFile: string;
   readonly cssFile?: string;
@@ -26,6 +27,7 @@ export interface BuiltScript {
 export interface BuildScriptsResult {
   readonly outDir: string;
   readonly entries: readonly BuiltScript[];
+  readonly vendors: readonly BuiltScript[];
   readonly manifestPath: string;
 }
 
@@ -35,7 +37,10 @@ export async function buildScripts(options: BuildScriptsOptions): Promise<BuildS
   const outDir = path.resolve(root, options.outDir ?? "dist");
   const entries = (await discoverAddonEntries(root)).filter((entry) => entry.bundle);
   const outputs = new Set<string>(["webflow-scripts.json"]);
-  const planned = entries.map((entry) => planEntry(root, entry));
+  const planned = [
+    ...(await readVendorEntries(root)),
+    ...entries.map((entry) => planEntry(root, entry)),
+  ];
   for (const entry of planned) {
     for (const output of [entry.scriptFile, entry.cssFile]) {
       const normalized = output.toLowerCase();
@@ -97,12 +102,20 @@ export async function buildScripts(options: BuildScriptsOptions): Promise<BuildS
     });
   }
   const manifestPath = path.join(outDir, "webflow-scripts.json");
+  const scripts = built.filter((entry) => entry.kind !== "vendor");
+  const vendors = built.filter((entry) => entry.kind === "vendor");
+  const manifestEntry = ({ name, kind, input, scriptFile, cssFile }: BuiltScript) => ({
+    name,
+    kind,
+    input,
+    bundle: { input, scriptFile, ...(cssFile ? { cssFile } : {}) },
+  });
   // Public manifest contains public paths only; never private map locations or source contents.
   await writeFile(
     manifestPath,
-    `${JSON.stringify({ schemaVersion: 1, entries: built.map(({ name, kind, input, scriptFile, cssFile }) => ({ name, kind, input, bundle: { input, scriptFile, ...(cssFile ? { cssFile } : {}) } })) }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 1, entries: scripts.map(manifestEntry), vendors: vendors.map(manifestEntry) }, null, 2)}\n`,
   );
-  return { outDir, entries: built, manifestPath };
+  return { outDir, entries: scripts, vendors, manifestPath };
 }
 
 function planEntry(root: string, entry: AddonEntry) {

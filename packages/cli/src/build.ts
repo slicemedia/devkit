@@ -91,6 +91,9 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
     configFile: false,
     publicDir: false,
     logLevel: "silent",
+    // IIFEs have no native import.meta.url. Capture the executing entry URL once so asynchronous
+    // loaders resolve sibling vendor files from the CDN, never from the Webflow page URL.
+    define: { "import.meta.url": "__slicemediaEntryUrl" },
     plugins: input.privateMaps ? [input.privateMaps] : [],
     build: {
       target: "es2018",
@@ -105,6 +108,8 @@ function createBuildConfig(input: BuildConfigInput): InlineConfig {
         input: input.entryPath,
         output: {
           format: "iife",
+          intro:
+            'const __slicemediaEntryUrl = typeof document === "undefined" ? "" : (document.currentScript ? document.currentScript.src : "");',
           entryFileNames: input.scriptFileName,
           assetFileNames: (asset) =>
             asset.name === "style.css" ? input.cssFileName : "assets/[name]-[hash][extname]",

@@ -263,7 +263,6 @@ function withBrowserBundle(root: string, entry: AddonEntry): AddonEntry {
     bundle: entry.bundle ?? {
       input: path.relative(root, entry.input).split(path.sep).join("/"),
       scriptFile: `${kind === "project" ? "projects" : "addons"}/${entry.name}.js`,
-      cssFile: `${kind === "project" ? "projects" : "addons"}/${entry.name}.css`,
     },
   };
 }

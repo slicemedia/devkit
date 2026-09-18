@@ -3,7 +3,7 @@
 Local development, project builds, sanitization, addon metadata, and read-only Webflow inspection.
 The CLI contains no Webflow write or publish commands.
 
-Run the `0.1.0` release candidate directly through the npm `next` tag:
+Run the current release candidate directly through the npm `next` tag:
 
 ```sh
 npm exec --package=@slicemedia/devkit-cli@next -- slicemedia-devkit help
@@ -16,6 +16,7 @@ or install it globally with `npm install --global @slicemedia/devkit-cli@next`.
 
 ```sh
 slicemedia-devkit dev
+slicemedia-devkit dev --origin https://testing.example.com
 slicemedia-devkit build
 slicemedia-devkit doctor
 slicemedia-devkit catalog
@@ -44,6 +45,13 @@ See [generated setup guides](../../docs/setup-guides.md).
 `build --sourcemap` stores JavaScript maps privately under `.slicemedia/sourcemaps/`, outside
 `dist/`, and omits map references from the production script. Deploy only the output directory.
 See [private sourcemaps](../../docs/private-sourcemaps.md).
+
+Declare project-owned vendor entries with `vendors: [{ name, input }]` in `devkit.config.json`.
+The default build emits them once under `dist/vendor/`, alongside independent addon/project files;
+the build manifest records both entry and vendor outputs. Deploy the complete output tree. The
+dev server builds vendors at startup; restart after vendor changes. Loopback origins are allowed
+by default; use repeatable `--origin` options for exact approved Webflow testing-page origins.
+See [shared dependencies](../../docs/shared-dependencies.md) and [deployment](../../docs/deployment.md).
 
 ## Support and security
 
