@@ -318,6 +318,11 @@ describe("scaffoldProject", () => {
           "utf8",
         );
         expect(vendor).toContain("registerSharedModule");
+        if (capability === "slider") {
+          expect(vendor).toContain('import "./slider.css"');
+          const styles = await readFile(join(targetDirectory, "src/vendors/slider.css"), "utf8");
+          expect(styles).toContain('@import "swiper/css" layer(swiper)');
+        }
         expect(integration).not.toMatch(/import ["'](?:swiper|tippy)/u);
         const config = JSON.parse(
           await readFile(join(targetDirectory, "devkit.config.json"), "utf8"),
