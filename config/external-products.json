@@ -3,11 +3,11 @@
   "products": {
     "agentKit": {
       "packageName": "@slicemedia/agent-kit",
-      "range": "^0.2.2"
+      "range": "^0.2.4"
     },
     "swiperAdapter": {
       "packageName": "@slicemedia/swiper-adapter",
-      "range": "^0.1.0"
+      "range": "^0.2.0"
     },
     "spacesDeployer": {
       "packageName": "@slicemedia/spaces-deployer",

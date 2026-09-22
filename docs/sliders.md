@@ -7,12 +7,19 @@ installed version supports it.
 
 ## Compatibility
 
-`structure` requires **Swiper Adapter 0.2.0 or later**. It is unavailable in 0.1.x. DevKit 0.5.0's
-creator currently declares `^0.1.0`, which does not include 0.2.0. Check the installed package and
-published release before upgrading a project; source support in the adapter repository alone does
-not make a new npm release available. The generated `createProjectSlider()` integration forwards
-adapter options, so adopting this mode after the dependency upgrade needs no second adapter or
-additional vendor bundle. Existing standard-markup sliders remain compatible without the mode.
+`structure` requires **Swiper Adapter 0.2.0 or later**. DevKit 0.5.1 creates slider projects with
+the compatible `^0.2.0` adapter range and Agent Kit `^0.2.4` when agent instructions are selected.
+Projects created with DevKit 0.5.0 used `^0.1.0`, which does not include 0.2.0; upgrade that
+dependency explicitly before adopting the new mode. The generated `createProjectSlider()`
+integration forwards adapter options, so this needs no second adapter or additional vendor bundle.
+Existing standard-markup sliders remain compatible without the mode.
+
+```sh
+pnpm add @slicemedia/swiper-adapter@next
+```
+
+Keep the existing compatible Swiper peer dependency, regenerate installed Agent Kit instructions
+after updating that package, and rebuild the shared vendor together with affected addons.
 
 ## Markup and design
 

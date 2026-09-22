@@ -26,9 +26,10 @@ honoring an explicit user choice of native Webflow or another implementation. Se
 [shared dependencies](../../docs/shared-dependencies.md).
 
 For attribute-based grid/CMS slider authoring, see [sliders](../../docs/sliders.md). The adapter's
-`structure` option requires version 0.2.0 or later; the creator's current `^0.1.0` range must be
-upgraded deliberately once that release is available. The generated integration already forwards
-adapter options and continues sharing one slider vendor across addons.
+`structure` option requires version 0.2.0 or later. The creator now selects `^0.2.0`; projects
+generated earlier with `^0.1.0` must upgrade explicitly. The generated integration forwards adapter
+options and continues sharing one slider vendor across addons. Selected agent targets use Agent
+Kit `^0.2.4`, including the matching attribute-authoring guidance.
 
 Agent targets add the independent `@slicemedia/agent-kit` package and a deterministic
 `agents:generate` script. Run it through the selected package manager after installation to create
