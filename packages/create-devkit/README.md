@@ -25,6 +25,12 @@ markup needs the behavior, optionally near the viewport. Prefer Swiper for slide
 honoring an explicit user choice of native Webflow or another implementation. See
 [shared dependencies](../../docs/shared-dependencies.md).
 
+For attribute-based grid/CMS slider authoring, see [sliders](../../docs/sliders.md). The adapter's
+`structure` option requires version 0.2.0 or later. The creator now selects `^0.2.0`; projects
+generated earlier with `^0.1.0` must upgrade explicitly. The generated integration forwards adapter
+options and continues sharing one slider vendor across addons. Selected agent targets use Agent
+Kit `^0.2.4`, including the matching attribute-authoring guidance.
+
 Agent targets add the independent `@slicemedia/agent-kit` package and a deterministic
 `agents:generate` script. Run it through the selected package manager after installation to create
 only the selected platform files; DevKit does not bundle the Agent Kit source.

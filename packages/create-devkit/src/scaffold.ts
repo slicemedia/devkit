@@ -78,6 +78,7 @@ interface CapabilityDefinition {
   integrationFile: string;
   renderIntegration(): string;
   renderVendor?(): string;
+  renderVendorStyles?(): string;
 }
 
 const packageManagerMetadata: Record<PackageManager, string> = {
@@ -180,9 +181,13 @@ export async function createProjectSlider(
 `,
     renderVendor: () => `import { registerSharedModule } from "@slicemedia/devkit-core";
 import { createResponsiveSwiper } from "@slicemedia/swiper-adapter";
-import "swiper/css";
+import "./slider.css";
 
 registerSharedModule({ createResponsiveSwiper });
+`,
+    renderVendorStyles:
+      () => `/* Keep Webflow's component classes above upstream visual defaults. */
+@import "swiper/css" layer(swiper);
 `,
   },
   animations: {
@@ -557,6 +562,13 @@ async function writeIntegrations(
       const vendorPath = join(target, "src", "vendors", `${capability}.ts`);
       await mkdir(dirname(vendorPath), { recursive: true });
       await writeFile(vendorPath, definition.renderVendor(), { flag: "wx" });
+      if (definition.renderVendorStyles) {
+        await writeFile(
+          join(target, "src", "vendors", `${capability}.css`),
+          definition.renderVendorStyles(),
+          { flag: "wx" },
+        );
+      }
     }
   }
   return files;

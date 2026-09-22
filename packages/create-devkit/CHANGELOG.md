@@ -1,5 +1,13 @@
 # @slicemedia/create-devkit
 
+## 0.5.1
+
+### Patch Changes
+
+- a943c2e: Place official Swiper CSS in a lower-priority cascade layer in generated slider vendors so Webflow component classes retain visual styling. Document attribute-based markup preparation, adapter version requirements, shared loading, and reversible CMS grid layouts.
+
+  Select Swiper Adapter ^0.2.0 and Agent Kit ^0.2.4 in generated projects so the new structure API and matching agent guidance are available together.
+
 ## 0.5.0
 
 ### Minor Changes

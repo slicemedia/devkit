@@ -40,7 +40,9 @@ The manifest has separate `entries` and `vendors` arrays containing actual emitt
 The animations vendor imports GSAP and ScrollTrigger and calls `registerSharedModule({ gsap,
 ScrollTrigger })` after plugin registration. Add or remove plugins in that vendor and update the
 integration's type contract together. Swiper CSS and optional `/webflow` helpers also belong in the
-slider vendor; include only the module styles the project uses. Never import vendor entry files
+slider vendor; include only the module styles the project uses. The generated slider stylesheet
+imports official CSS into `layer(swiper)` so Webflow component classes retain visual priority
+even when the vendor loads later. Keep optional module CSS in that layer as well. Never import vendor entry files
 from addon entries: they are separate build inputs.
 
 Use the generated integrations from an addon's lifecycle:
@@ -57,6 +59,10 @@ Import these functions from the matching `src/integrations/` modules. Slider/too
 return without loading a vendor when no matching element exists. Animation callers check their own
 markup. Keep async initialization owned by the addon: handle load failures, respect teardown,
 and destroy returned controllers, tooltips, animations, and observers on cleanup.
+
+For Webflow grids and CMS lists, prefer the adapter's opt-in attribute structure mode when the
+installed adapter supports it. It keeps design classes in Webflow and prepares Swiper's temporary
+classes and layout. See [slider markup, version requirements, and integration](sliders.md).
 
 `loadSharedModule()` uses a lazily installed document registry shared across independently built
 addons. `loadAssetOnce()` shares pending script/style promises and rejects conflicting uses of an
